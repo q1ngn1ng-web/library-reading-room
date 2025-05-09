@@ -3,6 +3,8 @@ package com.example.controller;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.example.common.Result;
+import com.example.common.ServerConfig;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,9 +20,14 @@ import java.util.List;
 @RequestMapping("/files")
 public class FileController {
 
+    @Autowired
+    private ServerConfig serverConfig;
     // 文件上传存储路径
     private static final String filePath = System.getProperty("user.dir") + "/file/";
-    private static final String http = "http://localhost:8080/files/";
+    // 动态获取 BaseUrl（非静态方法）
+    public String getFileBaseUrl() {
+        return serverConfig.getFileBaseUrl();
+    }
 
     /**
      * 文件上传
@@ -44,7 +51,7 @@ public class FileController {
             } catch (Exception e) {
                 System.err.println(fileName + "--文件上传失败");
             }
-            return Result.success(http + flag + "-" + fileName);
+            return Result.success(getFileBaseUrl() + flag + "-" + fileName);
         }
     }
 

@@ -2,12 +2,14 @@ package com.example.service;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.example.common.JwtTokenUtils;
+import com.example.common.ServerConfig;
 import com.example.dao.UserDao;
 import com.example.entity.User;
 import com.example.entity.Params;
 import com.example.exception.CustomException;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -16,6 +18,8 @@ import java.util.List;
 @Service
 public class UserService {
 
+    @Autowired
+    private ServerConfig serverConfig;
     @Resource
     private UserDao userDao;
 
@@ -47,7 +51,7 @@ public class UserService {
             admin.setPassword("123456");
         }
         if (ObjectUtil.isEmpty(admin.getAvatar())) {
-            admin.setAvatar("http://localhost:8080/files/qy-default.png");
+            admin.setAvatar(serverConfig.getFileBaseUrl() + "qy-default.png");
         }
         userDao.insertSelective(admin);
     }
@@ -60,25 +64,23 @@ public class UserService {
         userDao.deleteByPrimaryKey(id);
     }
 
-    public User login(User admin) {
+    public User login(User user) {
         // 1. 进行一些非空判断
-        if (admin.getName() == null || "".equals(admin.getName())) {
+        if (user.getName() == null || "".equals(user.getName())) {
             throw new CustomException("用户名不能为空");
         }
-        if (admin.getPassword() == null || "".equals(admin.getPassword())) {
+        if (user.getPassword() == null || "".equals(user.getPassword())) {
             throw new CustomException("密码不能为空");
         }
-        // 2. 从数据库里面根据这个用户名和密码去查询对应的管理员信息，
-        User user = userDao.findByNameAndPassword(admin.getName(), admin.getPassword());
-        if (user == null) {
-            // 如果查出来没有，那说明输入的用户名或者密码有误，提示用户，不允许登录
+        // 2. 从数据库里面根据这个用户名和密码去查询对应的用户信息
+        User loginUser = userDao.findByNameAndPassword(user.getName(), user.getPassword());
+        if (loginUser == null) {
             throw new CustomException("用户名或密码输入错误");
         }
-        // 如果查出来了有，那说明确实有这个管理员，而且输入的用户名和密码都对；
-        // 生成该登录用户对应的token，然后跟着user一起返回到前台
-        String token = JwtTokenUtils.genToken(user.getId().toString(), user.getPassword());
-        user.setToken(token);
-        return user;
+        // 生成token
+        String token = JwtTokenUtils.genToken(loginUser.getId().toString(), loginUser.getPassword());
+        loginUser.setToken(token);
+        return loginUser;
     }
 
     public User findById(Integer id) {

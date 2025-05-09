@@ -9,7 +9,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import javax.annotation.Resource;
 
 @Configuration
-public class WebConfig implements  WebMvcConfigurer {
+public class WebConfig implements WebMvcConfigurer {
 
     @Resource
     private JwtInterceptor jwtInterceptor;
@@ -17,11 +17,13 @@ public class WebConfig implements  WebMvcConfigurer {
     // 加自定义拦截器JwtInterceptor，设置拦截规则
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(jwtInterceptor).addPathPatterns("/api/**")
+        registry.addInterceptor(jwtInterceptor)
+                .addPathPatterns("/api/**")
                 .excludePathPatterns("/files/**")
                 .excludePathPatterns("/captcha")
                 .excludePathPatterns("/type/upload")
                 .excludePathPatterns("/admin/login")
-                .excludePathPatterns("/admin/register");
+                .excludePathPatterns("/user/login")
+                .excludePathPatterns("/user/register");
     }
 }
