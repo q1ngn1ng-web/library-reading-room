@@ -3,15 +3,15 @@
     <div style="width: 450px; height: 400px; margin: 150px auto; background-color:rgba(165,190,234,0.5); border-radius: 10px">
       <div style="width: 100%; height: 100px; font-size: 30px; line-height: 100px; text-align: center; color: #5050bb">欢迎注册</div>
       <div style="margin-top: 25px; text-align: center; height: 320px;">
-        <el-form :model="admin">
+        <el-form :model="user">
           <el-form-item>
-            <el-input v-model="admin.name" prefix-icon="el-icon-user" style="width: 80%" placeholder="请输入用户名"></el-input>
+            <el-input v-model="user.name" prefix-icon="el-icon-user" style="width: 80%" placeholder="请输入用户名"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="admin.password" show-password prefix-icon="el-icon-lock" style="width: 80%" placeholder="请输入密码"></el-input>
+            <el-input v-model="user.password" show-password prefix-icon="el-icon-lock" style="width: 80%" placeholder="请输入密码"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-select v-model="admin.role" placeholder="请选择角色" style="width: 80%">
+            <el-select v-model="user.role" placeholder="请选择角色" style="width: 80%">
               <el-option label="教师" value="TEACHER"></el-option>
               <el-option label="学生" value="STUDENT"></el-option>
             </el-select>
@@ -37,7 +37,7 @@ export default {
   name: "Register",
   data() {
     return {
-      admin: {}
+      user: {}
     }
   },
   // 页面加载的时候，做一些事情，在created里面
@@ -46,7 +46,7 @@ export default {
   // 定义一些页面上控件出发的事件调用的方法
   methods: {
     register() {
-      request.post("/user/register", this.admin).then(res => {
+      request.post("/user/register", this.user).then(res => {
         if (res.code === '0') {
           this.$message({
             message: '注册成功',

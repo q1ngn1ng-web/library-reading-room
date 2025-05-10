@@ -1,7 +1,7 @@
 <template>
   <div>
     <div style="color: #5050bb; font-weight: bold; font-size: 20px">
-      欢迎您 {{user.name}}，这里是 图书馆阅览室系统 ！
+      欢迎您 {{user.name}}，这里是图书馆阅览室系统 ！
     </div>
     <div style="display: flex; margin-top: 20px">
       <div style="flex: 1">

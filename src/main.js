@@ -10,7 +10,7 @@ Vue.config.productionTip = false
 Vue.use(ElementUI, { size: "small"});
 Vue.prototype.$bus = new Vue();
 // 任意组件或 request.js
-console.log("当前 BASE_API:", process.env.VUE_APP_BASE_API);//为什么是8082端口，我需要是8080
+// console.log("当前 BASE_API:", process.env.VUE_APP_BASE_API);
 
 console.log("NODE_ENV:", process.env.NODE_ENV);//development
 

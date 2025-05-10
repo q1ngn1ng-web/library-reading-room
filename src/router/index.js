@@ -1,14 +1,18 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '@/views/Home.vue'
+
 import Login from "@/views/Login.vue";
-import User from "@/views/User.vue";
-import Layout from "@/views/user/Layout.vue";
-import Register from "@/views/Register";
 import ChatRoom from "@/components/ChatRoom.vue";
+
+import Home from '@/views/user/Home.vue'
+import Layout from "@/views/user/Layout.vue";
+import Register from "@/views/user/Register";
+
 import Person from "@/views/user/Profile.vue";
-import Notice from "@/views/Notice";
-import AdminDashboard from "@/views/admin/Dashboard.vue";
+
+import AdminDashboard from "@/views/admin/Dashboard";
+import Notice from "@/views/admin/Notice";
+import User from "@/views/admin/User.vue";
 
 Vue.use(VueRouter)
 

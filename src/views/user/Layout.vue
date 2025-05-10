@@ -63,7 +63,7 @@
 
 <script>
 import ChangePassword from '@/components/ChangePassword.vue'
-import Home from '@/views/Home.vue'
+import Home from '@/views/user/Home.vue'
 import ChatRoom from '@/components/ChatRoom.vue'
 import Person from '@/views/user/Profile.vue'
 
