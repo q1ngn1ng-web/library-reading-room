@@ -1,5 +1,19 @@
 <template>
   <div class="chat-room">
+    <el-alert
+      v-if="connectionError"
+      title="WebSocket连接失败"
+      type="error"
+      description="无法建立WebSocket连接，请尝试刷新页面或检查网络连接。"
+      show-icon
+      :closable="false"
+      style="margin-bottom: 15px;"
+    >
+      <el-button size="small" type="primary" @click="reconnectWebSocket">
+        重新连接
+      </el-button>
+    </el-alert>
+
     <el-card class="room-info-card">
       <div slot="header" class="room-header">
         <h3 v-if="currentRoom">{{ currentRoom.floor }}楼 | {{ currentRoom.category }}</h3>
@@ -85,7 +99,10 @@ export default {
       isAnonymous: false,
       defaultAvatar: require('@/assets/default-avatar.png'), // 请确保路径正确或使用在线链接
       user: null,
-      isConnected: false
+      isConnected: false,
+      showDebugInfo: true,
+      connectionError: false, // 添加连接错误状态
+      reconnectTimer: null // 用于管理重连定时器
     }
   },
   computed: {
@@ -112,6 +129,7 @@ export default {
       'clearCurrentRoomData'
     ]),
     handleWebSocketError(errorMsg) {
+      this.connectionError = true;
       this.$message.error(errorMsg || 'WebSocket连接失败，请刷新页面重试');
     },
     sendMessage() {
@@ -149,16 +167,24 @@ export default {
       const minutes = date.getMinutes().toString().padStart(2, '0')
       return `${hours}:${minutes}`
     },
+    reconnectWebSocket() {
+      if (this.wsService) {
+        this.wsService.disconnect();
+        this.wsService = null;
+      }
+      this.connectionError = false;
+      this.initWebSocket();
+    },
     initWebSocket() {
       if (this.wsService) {
-        this.wsService.disconnect()
+        this.wsService.disconnect();
       }
 
-      this.user = JSON.parse(localStorage.getItem('user') || '{}')
+      this.user = JSON.parse(localStorage.getItem('user') || '{}');
       if (!this.user || !this.user.name) {
-        this.$message.error('用户信息不完整，请重新登录')
-        this.$router.push('/login')
-        return
+        this.$message.error('用户信息不完整，请重新登录');
+        this.$router.push('/login');
+        return;
       }
 
       // 确保我们得到用户ID
@@ -168,18 +194,34 @@ export default {
         console.warn('用户ID不存在，可能会导致数据库中user_id为0');
       }
 
+      this.connectionError = false;
+      this.isConnected = false;
+
       this.wsService = new WebSocketService(
         this.roomId,
-        userId, // 传递用户ID
+        userId,
         this.user.name,
         this.user.avatar || '',
         this.handleMessage,
         this.handleUserList
-      )
+      );
 
-      this.wsService.onError = this.handleWebSocketError;
+      // 设置错误处理回调
+      this.wsService.onError = (errorMsg) => {
+        this.connectionError = true;
+        this.isConnected = false;
+        this.$message.error(errorMsg || 'WebSocket连接失败，请刷新页面重试');
+      };
 
-      this.wsService.connect()
+      // 设置连接成功回调
+      this.wsService.onOpen = () => {
+        this.connectionError = false;
+        this.isConnected = true;
+        console.log('WebSocket连接已建立');
+      };
+
+      // 执行连接
+      this.wsService.connect();
     },
     async loadRoomData() {
       try {
@@ -222,11 +264,18 @@ export default {
     }
   },
   beforeDestroy() {
-    if (this.wsService) {
-      this.wsService.disconnect()
-      this.wsService = null
+    // 确保在组件销毁前清理所有定时器和连接
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
-    this.clearCurrentRoomData()
+
+    if (this.wsService) {
+      console.log('组件销毁，断开WebSocket连接');
+      this.wsService.disconnect();
+      this.wsService = null;
+    }
+    this.clearCurrentRoomData();
   }
 }
 </script>
