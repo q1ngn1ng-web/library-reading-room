@@ -8,11 +8,17 @@ import javax.persistence.*;
  * 群组聊天
  */
 @Data
-@Table(name = "message")
-public class Chat {
+@Table(name = "chat_message")
+public class ChatMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+	private Integer id;
+	/** 房间id */
+	@Column(name = "room_id")
+	private Integer roomId;
+	/** 用户id */
+	@Column(name = "user_id")
+    private Integer userId;
 	/** 内容 */
 	@Column(name = "content")
 	private String content;
@@ -28,5 +34,8 @@ public class Chat {
 	/** 类型 */
 	@Column(name = "type")
 	private String type;
+	/** 是否匿名 */
+	@Column(name = "is_anonymous")
+    private Boolean isAnonymous;
 
 }

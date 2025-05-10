@@ -10,7 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import javax.annotation.Resource;
 
 /**
- * 描述:  统一拦截所有接口，做接口限流
+ * 描述: 统一拦截所有接口，做接口限流
  **/
 @Configuration
 @Component
@@ -22,7 +22,8 @@ public class RateLimiterConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(rateLimiterInterceptor)
-                .addPathPatterns("/**");
+                .addPathPatterns("/**")
+                .excludePathPatterns("/imserver/**"); // 排除WebSocket路径
     }
 
 }
