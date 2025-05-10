@@ -2,7 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 
 import Login from "@/views/Login.vue";
-import ChatRoom from "@/components/ChatRoom.vue";
+import ChatRoom from "@/views/chat/ChatRoom.vue";
 
 import Home from '@/views/user/Home.vue'
 import Layout from "@/views/user/Layout.vue";
@@ -14,6 +14,10 @@ import AdminDashboard from "@/views/admin/Dashboard";
 import Notice from "@/views/admin/Notice";
 import User from "@/views/admin/User.vue";
 
+// 聊天室相关组件
+import ChatRoomList from "@/views/chat/ChatRoomList.vue";
+import ChatRoomAdmin from "@/views/chat/ChatRoomAdmin.vue";
+
 Vue.use(VueRouter)
 
 const routes = [
@@ -24,11 +28,16 @@ const routes = [
       { path: '', component: Home },
       { path: 'user', component: User },
       { path: 'notice', component: Notice },
-      { path: 'ChatRoom', component: ChatRoom },
+      // 聊天室列表
+      { path: 'chat-rooms', component: ChatRoomList },
+      // 单个聊天室
+      { path: 'chat-room/:id', component: ChatRoom },
       { path: 'person', component: Person },
     ]
   },
   { path: '/admin', component: AdminDashboard },
+  // 管理员聊天室管理
+  { path: '/admin/chat-rooms', component: ChatRoomAdmin },
 ]
 
 const router = new VueRouter({
@@ -48,7 +57,7 @@ router.beforeEach((to, from, next) => {
   const adminToken = localStorage.getItem("admin-token");
 
   // 如果是访问管理员页面
-  if (to.path === '/admin') {
+  if (to.path === '/admin' || to.path === '/admin/chat-rooms') {
     if (!adminToken) {
       return next("/login");
     }

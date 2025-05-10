@@ -30,7 +30,7 @@
             <i class="el-icon-s-home"></i>
             <span slot="title">首页</span>
           </el-menu-item>
-          <el-menu-item index="chat">
+          <el-menu-item index="chat-rooms">
             <i class="el-icon-chat-dot-round"></i>
             <span slot="title">聊天室</span>
           </el-menu-item>
@@ -38,10 +38,13 @@
       </el-aside>
 
       <el-main>
+        <!-- 使用路由视图 -->
+        <router-view v-if="!currentView || currentView === 'router'"></router-view>
+
         <!-- 根据选中的菜单显示不同内容 -->
         <component
           :is="currentView"
-          v-if="currentView !== 'password' && currentView !== 'Person'"
+          v-else-if="currentView !== 'password' && currentView !== 'Person'"
         ></component>
 
         <change-password
@@ -64,7 +67,6 @@
 <script>
 import ChangePassword from '@/components/ChangePassword.vue'
 import Home from '@/views/user/Home.vue'
-import ChatRoom from '@/components/ChatRoom.vue'
 import Person from '@/views/user/Profile.vue'
 
 export default {
@@ -72,7 +74,6 @@ export default {
   components: {
     ChangePassword,
     Home,
-    ChatRoom,
     Person
   },
   data() {
@@ -88,22 +89,32 @@ export default {
     if (userInfo) {
       this.userInfo = JSON.parse(userInfo)
     }
+
+    // 根据当前路由设置激活的菜单
+    const path = this.$route.path;
+    if (path.includes('chat-room')) {
+      this.activeMenu = 'chat-rooms';
+      this.currentView = 'router';
+    } else if (path.includes('chat-rooms')) {
+      this.activeMenu = 'chat-rooms';
+      this.currentView = 'router';
+    }
   },
   methods: {
     handleSelect(key) {
       this.activeMenu = key
-      // 根据菜单项设置当前视图
+      // 根据菜单项设置当前视图或进行路由跳转
       switch(key) {
         case 'home':
           this.currentView = 'Home'
           break
-        case 'chat':
-          this.currentView = 'ChatRoom'
+        case 'chat-rooms':
+          this.currentView = 'router'
+          this.$router.push('/chat-rooms')
           break
         case 'notice':
           this.currentView = 'Notice'
           break
-
       }
     },
     handleCommand(command) {
@@ -136,11 +147,6 @@ export default {
       this.currentView = 'Home' // 修改成功后返回首页
       this.activeMenu = 'home'
     },
-    handlePasswordChanged() {
-      this.$message.success('密码修改成功')
-      this.currentView = 'Home'
-      this.activeMenu = 'home'
-    },
     handleProfileUpdated() {
       this.$message.success('个人信息更新成功')
       // 更新本地存储的用户信息
@@ -151,6 +157,15 @@ export default {
       this.currentView = 'Home'
       this.activeMenu = 'home'
     },
+  },
+  watch: {
+    // 监听路由变化，更新菜单激活状态
+    '$route'(to) {
+      if (to.path.includes('chat-room') || to.path.includes('chat-rooms')) {
+        this.activeMenu = 'chat-rooms';
+        this.currentView = 'router';
+      }
+    }
   }
 }
 </script>

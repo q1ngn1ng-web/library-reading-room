@@ -119,6 +119,10 @@ export default {
     request.post(url, this.loginForm).then((res) => {
       if (res.code === "0") {
         this.$message.success(this.loginForm.userType === "user" ? "用户登录成功" : "管理员登录成功");
+
+        // 打印返回的用户信息，重点检查是否包含id字段
+        console.log("登录成功返回的用户信息:", res.data);
+
         localStorage.setItem(this.loginForm.userType, JSON.stringify(res.data));
 
         if (this.loginForm.userType === "admin") {
