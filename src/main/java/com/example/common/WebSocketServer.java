@@ -5,8 +5,8 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.json.JSONUtil;
-import com.example.entity.ChatRoom;
-import com.example.service.ChatRoomService;
+import com.example.entity.Chat;
+import com.example.service.ChatService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -34,9 +34,9 @@ public class WebSocketServer implements InitializingBean {
     public static final Map<String, Object> userMap = new ConcurrentHashMap<>();
 
     @Resource
-    ChatRoomService chatRoomService;
+    ChatService chatRoomService;
 
-    static ChatRoomService staticChatRoomService;
+    static ChatService staticChatRoomService;
 
     /**
      * 连接建立成功调用的方法
@@ -72,11 +72,11 @@ public class WebSocketServer implements InitializingBean {
     @OnMessage
     public void onMessage(String message, Session fromSession) {
         log.info("服务端收到消息:{}", message);
-        ChatRoom chatRoom = JSONUtil.toBean(message, ChatRoom.class);
-        chatRoom.setTime(DateUtil.now());
+        Chat chat = JSONUtil.toBean(message, Chat.class);
+        chat.setTime(DateUtil.now());
         // 存储数据到数据库
-        staticChatRoomService.add(chatRoom);
-        String jsonStr = JSONUtil.toJsonStr(chatRoom);  // 处理后的消息体
+        staticChatRoomService.add(chat);
+        String jsonStr = JSONUtil.toJsonStr(chat);  // 处理后的消息体
         this.sendAllMessage(jsonStr);
         log.info("[onMessage] 发送消息：{}", jsonStr);
     }

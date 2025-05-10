@@ -2,8 +2,8 @@ package com.example.service;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.example.common.JwtTokenUtils;
-import com.example.dao.ChatRoomDao;
-import com.example.entity.ChatRoom;
+import com.example.dao.ChatDao;
+import com.example.entity.Chat;
 import com.example.entity.User;
 import com.example.exception.CustomException;
 import com.github.pagehelper.PageHelper;
@@ -14,44 +14,44 @@ import javax.annotation.Resource;
 import java.util.List;
 
 @Service
-public class ChatRoomService {
+public class ChatService {
 
     @Resource
-    private ChatRoomDao chatRoomDao;
+    private ChatDao chatRoomDao;
 
-    public ChatRoom add(ChatRoom chatRoom) {
-        chatRoomDao.insertSelective(chatRoom);
-        return chatRoom;
+    public Chat add(Chat chat) {
+        chatRoomDao.insertSelective(chat);
+        return chat;
     }
 
     public void delete(Integer id) {
         chatRoomDao.deleteByPrimaryKey(id);
     }
 
-    public void update(ChatRoom chatRoom) {
-        chatRoomDao.updateByPrimaryKeySelective(chatRoom);
+    public void update(Chat chat) {
+        chatRoomDao.updateByPrimaryKeySelective(chat);
     }
 
-    public ChatRoom findById(Integer id) {
+    public Chat findById(Integer id) {
         return chatRoomDao.selectByPrimaryKey(id);
     }
 
-    public List<ChatRoom> findAll() {
+    public List<Chat> findAll() {
         return chatRoomDao.findBySearch(null);
     }
 
-    public PageInfo<ChatRoom> findPage(ChatRoom search, Integer pageNum, Integer pageSize) {
+    public PageInfo<Chat> findPage(Chat search, Integer pageNum, Integer pageSize) {
         User user = JwtTokenUtils.getCurrentUser();
         if (ObjectUtil.isNull(user)) {
             throw new CustomException("token验证失效");
         }
         PageHelper.startPage(pageNum, pageSize);
-        List<ChatRoom> all = findByCondition(user, search);
+        List<Chat> all = findByCondition(user, search);
 
         return PageInfo.of(all);
     }
 
-    public List<ChatRoom> findByCondition(User user, ChatRoom search) {
+    public List<Chat> findByCondition(User user, Chat search) {
 		return chatRoomDao.findBySearch(search);
     }
 }

@@ -8,8 +8,8 @@ import javax.persistence.*;
  * 群组聊天
  */
 @Data
-@Table(name = "chatRoom")
-public class ChatRoom {
+@Table(name = "message")
+public class Chat {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;

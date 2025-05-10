@@ -1,8 +1,8 @@
 package com.example.controller;
 
 import com.example.common.Result;
-import com.example.entity.ChatRoom;
-import com.example.service.ChatRoomService;
+import com.example.entity.Chat;
+import com.example.service.ChatService;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -11,20 +11,20 @@ import javax.annotation.Resource;
 *  描述：群组聊天相关接口
 */
 @RestController
-@RequestMapping(value = "/ChatRoom")
-public class ChatRoomController {
+@RequestMapping(value = "/chat")
+public class ChatController {
 
     @Resource
-    private ChatRoomService chatRoomService;
+    private ChatService chatRoomService;
 
     /**
      * 描述：新增
      */
     @PostMapping
-    public Result add(@RequestBody ChatRoom chatRoom) {
+    public Result add(@RequestBody Chat chat) {
 
-        chatRoomService.add(chatRoom);
-        return Result.success(chatRoom);
+        chatRoomService.add(chat);
+        return Result.success(chat);
     }
 
     /**
@@ -40,9 +40,9 @@ public class ChatRoomController {
      * 描述：更新
      */
     @PutMapping
-    public Result update(@RequestBody ChatRoom chatRoom) {
+    public Result update(@RequestBody Chat chat) {
 
-        chatRoomService.update(chatRoom);
+        chatRoomService.update(chat);
         return Result.success();
     }
 
@@ -51,8 +51,8 @@ public class ChatRoomController {
      */
     @GetMapping("/{id}")
     public Result detail(@PathVariable Integer id) {
-        ChatRoom chatRoom = chatRoomService.findById(id);
-        return Result.success(chatRoom);
+        Chat chat = chatRoomService.findById(id);
+        return Result.success(chat);
     }
 
     /**
@@ -67,7 +67,7 @@ public class ChatRoomController {
      * 描述：分页查询
      */
     @PostMapping("/page")
-    public Result page(@RequestBody ChatRoom search,
+    public Result page(@RequestBody Chat search,
                        @RequestParam(defaultValue = "1") Integer pageNum,
                        @RequestParam(defaultValue = "5") Integer pageSize) {
         return Result.success(chatRoomService.findPage(search, pageNum, pageSize));

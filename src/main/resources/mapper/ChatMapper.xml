@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.dao.ChatRoomDao">
+<mapper namespace="com.example.dao.ChatDao">
 
-    <select id="findBySearch" resultType="com.example.entity.ChatRoom">
-        select `chatRoom`.* from `chatRoom`
-
+    <select id="findBySearch" resultType="com.example.entity.Chat">
+        select `message`.* from `message`
         where 1 = 1
-
     </select>
 
 </mapper>
