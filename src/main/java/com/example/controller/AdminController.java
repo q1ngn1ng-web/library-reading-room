@@ -46,7 +46,7 @@ public class AdminController {
     /**
      * 获取所有管理员
      */
-    @GetMapping
+    @GetMapping("/findAll/{id}")
     public Result findAll() {
         List<Admin> list = adminService.findAll();
         return Result.success(list);
@@ -55,7 +55,7 @@ public class AdminController {
     /**
      * 根据ID查询管理员
      */
-    @GetMapping("/{id}")
+    @GetMapping("/find/{id}")
     public Result findById(@PathVariable Integer id) {
         Admin admin = adminService.findById(id);
         return Result.success(admin);
@@ -64,7 +64,7 @@ public class AdminController {
     /**
      * 更新管理员信息
      */
-    @PutMapping
+    @PutMapping("/update/{id}")
     public Result update(@RequestBody Admin admin) {
         adminService.update(admin);
         return Result.success();
@@ -73,7 +73,7 @@ public class AdminController {
     /**
      * 删除管理员
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("delete/{id}")
     public Result delete(@PathVariable Integer id) {
         adminService.delete(id);
         return Result.success();

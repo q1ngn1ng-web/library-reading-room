@@ -46,7 +46,7 @@ public class UserController {
     public Result updatePassword(@RequestBody User user) {
         User currentUser = JwtTokenUtils.getCurrentUser();
         if (ObjectUtil.isNull(currentUser)) {
-            return Result.error("token验证失效，请重新登陆");
+            return Result.error("用户获取不到，token验证失效，请重新登陆");
         }
         if (!user.getPassword().equals(currentUser.getPassword())) {
             return Result.error("原密码输入错误");

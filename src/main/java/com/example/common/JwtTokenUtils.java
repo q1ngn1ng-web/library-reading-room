@@ -48,11 +48,12 @@ public void setAdminService() {
      */
     public static String genToken(String userId, String password) {
         return JWT.create().withAudience(userId) // 将 userId 保存到 token 里面,作为载荷
-                .withExpiresAt(DateUtil.offsetHour(new Date(), 2)) // 2小时后token过期
+                .withExpiresAt(DateUtil.offsetHour(new Date(), 4)) // 2小时后token过期
                 .sign(Algorithm.HMAC256(password)); // 以 password 作为 token 的密钥
     }
 
     /**
+     * 从token中提取出id，再根据id查询
      * 获取当前登录的用户信息
      */
     public static User getCurrentUser() {
@@ -60,19 +61,19 @@ public void setAdminService() {
         try {
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
                     .getRequest();
-            token = request.getHeader("token");
+            token = request.getHeader("user-token");
             if (StrUtil.isBlank(token)) {
-                token = request.getParameter("token");
+                token = request.getParameter("user-token");
             }
             if (StrUtil.isBlank(token)) {
-                log.error("获取当前登录的token失败， token: {}", token);
+                log.error("获取当前登录的token失败， user-token: {}", token);
                 return null;
             }
             // 解析token，获取用户的id
             String adminId = JWT.decode(token).getAudience().get(0);
             return staticUserService.findById(Integer.valueOf(adminId));
         } catch (Exception e) {
-            log.error("获取当前登录的管理员信息失败, token={}", token, e);
+            log.error("获取当前登录的用户信息失败, user-token={}", token, e);
             return null;
         }
     }
@@ -81,18 +82,18 @@ public void setAdminService() {
         String token = null;
         try {
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
-            token = request.getHeader("token");
+            token = request.getHeader("admin-token");
             if (StrUtil.isBlank(token)) {
-                token = request.getParameter("token");
+                token = request.getParameter("admin-token");
             }
             if (StrUtil.isBlank(token)) {
-                log.error("获取当前登录的token失败， token: {}", token);
+                log.error("获取当前登录的token失败， admin-token: {}", token);
                 return null;
             }
             String adminId = JWT.decode(token).getAudience().get(0);
             return staticAdminService.findById(Integer.valueOf(adminId));
         } catch (Exception e) {
-            log.error("获取当前登录的管理员信息失败, token={}", token, e);
+            log.error("获取当前登录的管理员信息失败, admin-token={}", token, e);
             return null;
         }
     }

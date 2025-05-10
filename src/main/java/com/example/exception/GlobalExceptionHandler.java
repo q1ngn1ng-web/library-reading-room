@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     @ResponseBody
     public Result error(HttpServletRequest request, Exception e){
         log.error("异常信息：",e);
-        return Result.error("系统异常");
+        return Result.error("GlobalExeptionHandle表示：系统异常");
     }
 
     @ExceptionHandler(CustomException.class)
