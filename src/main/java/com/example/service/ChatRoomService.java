@@ -14,7 +14,8 @@ public class ChatRoomService {
     private ChatRoomDao chatRoomDao;
 
     public ChatRoom createRoom(ChatRoom room) {
-        room.setStatus(true);
+        room.setIsAvailable(true);
+        room.setIsChat(true);
         room.setCurrentUser(0);
         chatRoomDao.insert(room);
         return room;
@@ -24,7 +25,15 @@ public class ChatRoomService {
     public void updateRoomStatus(Integer roomId, Boolean status) {
         ChatRoom room = new ChatRoom();
         room.setId(roomId);
-        room.setStatus(status);
+        room.setIsAvailable(status);
+        chatRoomDao.updateByPrimaryKeySelective(room);
+    }
+
+    @Transactional
+    public void updateRoomChatStatus(Integer roomId, Boolean chatStatus) {
+        ChatRoom room = new ChatRoom();
+        room.setId(roomId);
+        room.setIsChat(chatStatus);
         chatRoomDao.updateByPrimaryKeySelective(room);
     }
 

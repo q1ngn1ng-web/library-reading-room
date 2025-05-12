@@ -25,14 +25,14 @@ public class AdminService {
      */
     public Admin login(Admin admin) {
         // 1. 进行一些非空判断
-        if (admin.getName() == null || "".equals(admin.getName())) {
+        if (admin.getUsername() == null || "".equals(admin.getUsername())) {
             throw new CustomException("用户名不能为空");
         }
         if (admin.getPassword() == null || "".equals(admin.getPassword())) {
             throw new CustomException("密码不能为空");
         }
         // 2. 从数据库里面根据这个用户名和密码去查询对应的管理员信息
-        Admin adminUser = adminDao.findByNameAndPassword(admin.getName(), admin.getPassword());
+        Admin adminUser = adminDao.findByNameAndPassword(admin.getUsername(), admin.getPassword());
         if (adminUser == null) {
             throw new CustomException("用户名或密码输入错误");
         }

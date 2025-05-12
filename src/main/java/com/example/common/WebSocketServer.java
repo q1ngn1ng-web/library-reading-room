@@ -61,7 +61,7 @@ public class WebSocketServer implements InitializingBean {
         try {
             // 1. 检查房间是否存在且可用
             ChatRoom room = staticChatRoomService.findById(roomId);
-            if (room == null || !room.getStatus()) {
+            if (room == null || !room.getIsChat()||!room.getIsAvailable()) {
                 session.close(new CloseReason(CloseReason.CloseCodes.CANNOT_ACCEPT,
                         room == null ? "聊天室不存在" : "聊天室已禁言"));
                 return;

@@ -19,13 +19,21 @@ public class ChatRoomController {
         return Result.success(chatRoomService.createRoom(room));
     }
 
+    /**
+     * 更新聊天室可用状态（启用/禁用）
+     */
+    @PutMapping("/{id}/available")
+    public Result updateAvailableStatus(@PathVariable Integer id, @RequestParam Boolean status) {
+        chatRoomService.updateRoomStatus(id, status);
+        return Result.success();
+    }
 
     /**
-     * 更新聊天室状态（启用/禁言）
+     * 更新聊天室发言状态（允许/禁言）
      */
-    @PutMapping("/{id}/status")
-    public Result updateStatus(@PathVariable Integer id, @RequestParam Boolean status) {
-        chatRoomService.updateRoomStatus(id, status);
+    @PutMapping("/{id}/chat")
+    public Result updateChatStatus(@PathVariable Integer id, @RequestParam Boolean status) {
+        chatRoomService.updateRoomChatStatus(id, status);
         return Result.success();
     }
 

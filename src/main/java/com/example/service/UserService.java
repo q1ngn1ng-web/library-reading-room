@@ -37,11 +37,11 @@ public class UserService {
 
     public void add(User admin) {
         // 1. 用户名一定要有，否则不让新增（后面需要用户名登录）
-        if (admin.getName() == null || "".equals(admin.getName())) {
+        if (admin.getUsername() == null || "".equals(admin.getUsername())) {
             throw new CustomException("用户名不能为空");
         }
         // 2. 进行重复性判断，同一名字的管理员不允许重复新增：只要根据用户名去数据库查询一下就可以了
-        User user = userDao.findByName(admin.getName());
+        User user = userDao.findByName(admin.getUsername());
         if (user != null) {
             // 说明已经有了，这里我们就要提示前台不允许新增了
             throw new CustomException("该用户名已存在，请更换用户名");
@@ -66,14 +66,14 @@ public class UserService {
 
     public User login(User user) {
         // 1. 进行一些非空判断
-        if (user.getName() == null || "".equals(user.getName())) {
+        if (user.getUsername() == null || "".equals(user.getUsername())) {
             throw new CustomException("用户名不能为空");
         }
         if (user.getPassword() == null || "".equals(user.getPassword())) {
             throw new CustomException("密码不能为空");
         }
         // 2. 从数据库里面根据这个用户名和密码去查询对应的用户信息
-        User loginUser = userDao.findByNameAndPassword(user.getName(), user.getPassword());
+        User loginUser = userDao.findByNameAndPassword(user.getUsername(), user.getPassword());
         if (loginUser == null) {
             throw new CustomException("用户名或密码输入错误");
         }

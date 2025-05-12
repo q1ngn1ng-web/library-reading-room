@@ -1,7 +1,7 @@
 package com.example.entity;
 
-
 import lombok.Data;
+import java.util.Date;
 
 @Data
 public class Params {
@@ -13,5 +13,13 @@ public class Params {
     private Integer userId;
     private Integer pageNum;
     private Integer pageSize;
+
+    // Additional fields for seat reservation
+    private Integer floorNumber;
+    private Integer seatNumber;
+    private Integer status;
+    private Date startDate;
+    private Date endDate;
+    private Integer reservationId;
 
 }

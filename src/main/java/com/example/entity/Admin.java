@@ -5,23 +5,27 @@ import lombok.Data;
 import javax.persistence.*;
 
 @Data
+@Entity
 @Table(name = "admin")
 public class Admin {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "name")
-    private String name;
+    @Column(name = "username")
+    private String username;
+
     @Column(name = "password")
     private String password;
 
-    @Column(name = "avatar")
-    private String avatar;
+    @Column(name = "nickname")
+    private String nickname;
 
     @Column(name = "role")
-    private String role;
+    private Integer role;
 
+    @Column(name = "avatar")
+    private String avatar;
 
     @Transient
     private String token;
@@ -31,5 +35,4 @@ public class Admin {
 
     @Transient
     private String newPassword;
-
 }

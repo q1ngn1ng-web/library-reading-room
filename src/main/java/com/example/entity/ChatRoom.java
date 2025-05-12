@@ -4,6 +4,7 @@ import lombok.Data;
 import javax.persistence.*;
 
 @Data
+@Entity
 @Table(name = "chat_room")
 public class ChatRoom {
     @Id
@@ -16,8 +17,11 @@ public class ChatRoom {
     @Column(name = "category")
     private String category;
 
-    @Column(name = "status")
-    private Boolean status;
+    @Column(name = "is_available")
+    private Boolean isAvailable;
+
+    @Column(name = "is_chat")
+    private Boolean isChat;
 
     @Column(name = "maxUser")
     private Integer maxUser;
