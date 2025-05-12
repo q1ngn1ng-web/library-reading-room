@@ -32,7 +32,7 @@
           </el-form-item>
           <el-form-item>
             <el-input
-              v-model="loginForm.name"
+              v-model="loginForm.username"
               prefix-icon="el-icon-user"
               style="width: 80%"
               placeholder="请输入用户名"
@@ -96,7 +96,7 @@ export default {
     return {
       loginForm: {
         userType: 'user', // 默认为普通用户
-        name: '',
+        username: '',
         password: '',
         verCode: ''
       },
@@ -126,10 +126,10 @@ export default {
         localStorage.setItem(this.loginForm.userType, JSON.stringify(res.data));
 
         if (this.loginForm.userType === "admin") {
-          localStorage.setItem('admin-token', JSON.stringify(res.data.token));
+          localStorage.setItem('admin-token', res.data.token);
             this.$router.push("/admin");
         } else {
-          localStorage.setItem('user-token', JSON.stringify(res.data.token));
+          localStorage.setItem('user-token', res.data.token);
             console.log("用户登录成功，发生了跳转");
             this.$router.push("/");
           }

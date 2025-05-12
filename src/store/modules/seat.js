@@ -95,6 +95,7 @@ const actions = {
   async fetchFloorSeats({ commit }, floorNumber) {
     try {
       const response = await getSeatStatus(floorNumber)
+      console.log('获取座位状态:', response.data)
       if (response.code === '0') {
         commit('SET_FLOOR_SEATS', {
           floorNumber,

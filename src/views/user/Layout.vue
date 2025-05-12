@@ -6,7 +6,8 @@
         <div class="user-info">
           <el-dropdown @command="handleCommand">
             <span class="el-dropdown-link">
-              {{ userInfo.name }}<i class="el-icon-arrow-down el-icon--right"></i>
+              <el-avatar size="small" :src="userInfo.avatar ? userInfo.avatar : require('@/assets/default-avatar.png')"></el-avatar>
+              {{ userInfo.nickname || userInfo.username }}<i class="el-icon-arrow-down el-icon--right"></i>
             </span>
             <el-dropdown-menu slot="dropdown">
               <el-dropdown-item command="person">
@@ -89,10 +90,7 @@ export default {
   },
   created() {
     // 获取用户信息
-    const userInfo = localStorage.getItem('user')
-    if (userInfo) {
-      this.userInfo = JSON.parse(userInfo)
-    }
+    this.loadUserInfo();
 
     // 根据当前路由设置激活的菜单
     const path = this.$route.path;
@@ -103,8 +101,18 @@ export default {
       this.activeMenu = 'chat-rooms';
       this.currentView = 'router';
     }
+
+    // 监听全局用户信息更新事件
+    this.$bus.$on('user-updated', this.loadUserInfo);
   },
   methods: {
+    // 加载最新的用户信息
+    loadUserInfo() {
+      const userInfo = localStorage.getItem('user');
+      if (userInfo) {
+        this.userInfo = JSON.parse(userInfo);
+      }
+    },
     handleSelect(key) {
       this.activeMenu = key
       // 根据菜单项设置当前视图或进行路由跳转
@@ -156,12 +164,12 @@ export default {
       this.activeMenu = 'home'
     },
     handleProfileUpdated() {
-      this.$message.success('个人信息更新成功')
       // 更新本地存储的用户信息
       const userInfo = localStorage.getItem('user')
       if (userInfo) {
         this.userInfo = JSON.parse(userInfo)
       }
+      this.$message.success('个人信息更新成功')
       this.currentView = 'Home'
       this.activeMenu = 'home'
     },
@@ -177,6 +185,10 @@ export default {
         this.currentView = 'router';
       }
     }
+  },
+  beforeDestroy() {
+    // 清理事件监听
+    this.$bus.$off('user-updated', this.loadUserInfo);
   }
 }
 </script>

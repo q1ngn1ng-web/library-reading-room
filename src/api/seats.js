@@ -1,11 +1,11 @@
 import request from '@/utils/request'
 
 // 获取指定楼层的所有座位
-export function getSeatStatus(floorNumber) {
+export function getSeatStatus(roomId) {
   return request({
     url: '/seats/status',
     method: 'get',
-    params: { floorNumber }
+    params: { roomId }
   })
 }
 
