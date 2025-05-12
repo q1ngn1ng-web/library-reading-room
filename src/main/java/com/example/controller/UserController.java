@@ -58,6 +58,7 @@ public class UserController {
 
     @PostMapping("/register")
     public Result register(@RequestBody User user) {
+        System.out.println("前端发送过来的User注册数据:"+user);
         userService.add(user);
         return Result.success();
     }

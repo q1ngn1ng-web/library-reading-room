@@ -5,7 +5,8 @@ import com.example.entity.Seat;
 import com.example.service.SeatService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @RestController
@@ -14,7 +15,7 @@ public class SeatController {
 
     @Autowired
     private SeatService seatService;
-
+    private static final Logger log = LoggerFactory.getLogger(SeatController.class);
     /**
      * Get all seats by room/floor
      *
@@ -23,7 +24,12 @@ public class SeatController {
      */
     @GetMapping("/status")
     public List<Seat> getSeatsByRoom(@RequestParam("roomId") Integer roomId) {
-        return seatService.getSeatsByRoom(roomId);
+        System.out.println("/seats/status,getSeatsByRoom:");
+        log.info("获取座位状态请求，roomId: {}", roomId);
+        List<Seat> seats = seatService.getSeatsByRoom(roomId);
+        log.info("找到 {} 个座位", seats.size());
+//        return seats;
+        return seats;
     }
 
     /**
@@ -44,7 +50,7 @@ public class SeatController {
      *
      * @return List of room IDs
      */
-    @GetMapping("/rooms")
+    @GetMapping("/floors")
     public List<Integer> getAllRooms() {
         return seatService.getAllRooms();
     }

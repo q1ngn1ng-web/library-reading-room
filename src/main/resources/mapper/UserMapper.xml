@@ -5,8 +5,8 @@
     <select id="findBySearch" resultType="com.example.entity.User">
         select * from user
         <where>
-            <if test="params != null and params.name != null and params.name != ''">
-                and name like concat('%', #{ params.name }, '%')
+            <if test="params != null and params.username != null and params.username != ''">
+                and username like concat('%', #{ params.username }, '%')
             </if>
             <if test="params != null and params.phone != null and params.phone != ''">
                 and phone like concat('%', #{ params.phone }, '%')

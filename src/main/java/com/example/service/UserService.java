@@ -38,7 +38,8 @@ public class UserService {
     public void add(User admin) {
         // 1. 用户名一定要有，否则不让新增（后面需要用户名登录）
         if (admin.getUsername() == null || "".equals(admin.getUsername())) {
-            throw new CustomException("用户名不能为空");
+            System.out.println(admin);
+            throw new CustomException("UserService用户名不能为空");
         }
         // 2. 进行重复性判断，同一名字的管理员不允许重复新增：只要根据用户名去数据库查询一下就可以了
         User user = userDao.findByName(admin.getUsername());
