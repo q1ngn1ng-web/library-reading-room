@@ -30,6 +30,10 @@
             <i class="el-icon-s-home"></i>
             <span slot="title">首页</span>
           </el-menu-item>
+          <el-menu-item index="seat-reservation">
+            <i class="el-icon-s-grid"></i>
+            <span slot="title">座位预约</span>
+          </el-menu-item>
           <el-menu-item index="chat-rooms">
             <i class="el-icon-chat-dot-round"></i>
             <span slot="title">聊天室</span>
@@ -108,6 +112,10 @@ export default {
         case 'home':
           this.currentView = 'Home'
           break
+        case 'seat-reservation':
+          this.currentView = 'router'
+          this.$router.push('/seat-reservation')
+          break
         case 'chat-rooms':
           this.currentView = 'router'
           this.$router.push('/chat-rooms')
@@ -163,6 +171,9 @@ export default {
     '$route'(to) {
       if (to.path.includes('chat-room') || to.path.includes('chat-rooms')) {
         this.activeMenu = 'chat-rooms';
+        this.currentView = 'router';
+      } else if (to.path.includes('seat-reservation')) {
+        this.activeMenu = 'seat-reservation';
         this.currentView = 'router';
       }
     }

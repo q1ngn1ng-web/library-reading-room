@@ -14,6 +14,21 @@
       </el-alert>
     </div>
 
+    <!-- 添加预约提示信息 -->
+    <div v-if="!hasActiveReservation && !isAdmin" class="reservation-alert">
+      <el-alert
+        title="您需要先预约座位才能使用聊天室"
+        type="warning"
+        description="请前往座位预约页面预约一个座位。"
+        show-icon
+        :closable="false"
+      >
+        <el-button size="small" type="primary" @click="goToSeatReservation" style="margin-top: 10px;">
+          前往预约座位
+        </el-button>
+      </el-alert>
+    </div>
+
     <div class="room-container" v-loading="loading">
       <div v-if="!serverOffline && chatRooms.length === 0" class="empty-state">
         <i class="el-icon-chat-dot-round" style="font-size: 48px; color: #909399;"></i>
@@ -23,30 +38,30 @@
 
       <el-row :gutter="20" v-else>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="room in chatRooms" :key="room.id" class="room-col">
-          <el-card class="room-card" :body-style="{ padding: '0px' }">
-            <div class="room-header">
-              <h3 class="room-title">{{ room.floor }}楼 | {{ room.category }}</h3>
-              <div class="room-status">
-                <el-tag :type="room.status ? 'success' : 'danger'" size="mini">
-                  {{ room.status ? '开放' : '关闭' }}
-                </el-tag>
-              </div>
-            </div>
-            <div class="room-info">
-              <div class="room-users">
-                <i class="el-icon-user"></i> {{ room.currentUser }}/{{ room.maxUser }}
-              </div>
-              <el-button
-                type="primary"
-                size="small"
-                :disabled="!room.status || room.currentUser >= room.maxUser || serverOffline"
-                @click="enterRoom(room.id)"
-              >
-                进入聊天室
-              </el-button>
-            </div>
-          </el-card>
-        </el-col>
+  <el-card class="room-card" :body-style="{ padding: '0px' }">
+    <div class="room-header">
+      <h3 class="room-title">{{ room.floor }}楼 | {{ room.category }}</h3>
+      <div class="room-status">
+        <el-tag :type="room.is_available ? 'success' : 'danger'" size="mini">
+          {{ room.is_available ? '开放' : '关闭' }}
+        </el-tag>
+      </div>
+    </div>
+    <div class="room-info">
+      <div class="room-users">
+        <i class="el-icon-user"></i> {{ room.currentUser }}/{{ room.maxUser }}
+      </div>
+      <el-button
+        type="primary"
+        size="small"
+        :disabled="!room.is_available || room.currentUser >= room.maxUser || serverOffline || (!hasActiveReservation && !isAdmin)"
+        @click="enterRoom(room.id)"
+      >
+        进入聊天室
+      </el-button>
+    </div>
+  </el-card>
+</el-col>
       </el-row>
     </div>
 
@@ -75,7 +90,10 @@
           <el-input-number v-model="roomForm.maxUser" :min="5" :max="100" controls-position="right"></el-input-number>
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="roomForm.status" active-text="开放" inactive-text="关闭"></el-switch>
+          <el-switch v-model="roomForm.is_available" active-text="开放" inactive-text="关闭"></el-switch>
+        </el-form-item>
+        <el-form-item label="允许发言">
+          <el-switch v-model="roomForm.is_chat" active-text="允许" inactive-text="禁言"></el-switch>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
@@ -98,7 +116,8 @@ export default {
         floor: 1,
         category: '',
         maxUser: 50,
-        status: true
+        is_available: true,
+        is_chat: true
       },
       floatingButtonPosition: {
         x: window.innerWidth - 100,
@@ -107,7 +126,8 @@ export default {
       isDragging: false,
       dragOffset: { x: 0, y: 0 },
       loading: false,
-      serverOffline: false
+      serverOffline: false,
+      hasActiveReservation: false
     }
   },
   computed: {
@@ -121,6 +141,18 @@ export default {
   },
   methods: {
     ...mapActions('chat', ['fetchChatRooms', 'createChatRoom']),
+
+    // 检查是否有活跃预约
+    checkActiveReservation() {
+      const activeReservation = localStorage.getItem('activeReservation')
+      this.hasActiveReservation = !!activeReservation
+      return this.hasActiveReservation
+    },
+
+    // 跳转到座位预约页面
+    goToSeatReservation() {
+      this.$router.push('/seat-reservation')
+    },
 
     async loadChatRooms() {
       this.loading = true
@@ -146,6 +178,20 @@ export default {
         this.$message.error('服务器离线，无法进入聊天室')
         return
       }
+
+      // 非管理员需要预约才能进入聊天室
+      if (!this.isAdmin && !this.hasActiveReservation) {
+        this.$message.warning('您需要先预约座位才能进入聊天室')
+        this.$confirm('您需要先预约座位才能进入聊天室，是否前往预约?', '提示', {
+          confirmButtonText: '去预约',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          this.goToSeatReservation()
+        }).catch(() => {})
+        return
+      }
+
       this.$router.push(`/chat-room/${roomId}`)
     },
 
@@ -169,7 +215,8 @@ export default {
             floor: 1,
             category: '',
             maxUser: 50,
-            status: true
+            is_available: true,
+            is_chat: true
           }
         } else {
           this.$message.error(res.msg || '创建聊天室失败')
@@ -207,6 +254,8 @@ export default {
   },
   created() {
     this.loadChatRooms()
+    // 检查是否有活跃预约
+    this.checkActiveReservation()
   },
   beforeDestroy() {
     document.removeEventListener('mousemove', this.onDrag)

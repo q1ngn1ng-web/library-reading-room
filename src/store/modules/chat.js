@@ -1,4 +1,6 @@
 import request from '@/utils/request'
+import { getChatRoomList, getChatRoomDetail, createChatRoom, updateChatRoomStatus,
+  updateChatRoomChatStatus, deleteChatRoom } from '@/api/chatRoom'
 
 const state = {
   chatRooms: [],
@@ -9,10 +11,21 @@ const state = {
 
 const mutations = {
   SET_CHAT_ROOMS(state, rooms) {
-    state.chatRooms = rooms
+    // 添加兼容性处理
+    state.chatRooms = rooms.map(room => ({
+      ...room,
+      status: room.is_available // 为兼容旧代码保留status字段
+    }))
   },
   SET_CURRENT_ROOM(state, room) {
-    state.currentRoom = room
+    if (room) {
+      state.currentRoom = {
+        ...room,
+        status: room.is_available // 为兼容旧代码保留status字段
+      }
+    } else {
+      state.currentRoom = null
+    }
   },
   SET_MESSAGES(state, messages) {
     state.messages = messages
@@ -29,7 +42,7 @@ const actions = {
   // 获取所有聊天室
   async fetchChatRooms({ commit }) {
     try {
-      const res = await request.get('/chatRoom/list')
+      const res = await getChatRoomList()
       if (res.code === '0') {
         commit('SET_CHAT_ROOMS', res.data)
         return res.data
@@ -44,7 +57,7 @@ const actions = {
   // 获取单个聊天室信息
   async fetchChatRoom({ commit }, roomId) {
     try {
-      const res = await request.get(`/chatRoom/${roomId}`)
+      const res = await getChatRoomDetail(roomId)
       if (res.code === '0') {
         commit('SET_CURRENT_ROOM', res.data)
         return res.data
@@ -59,7 +72,7 @@ const actions = {
   // 创建聊天室
   async createChatRoom(_, roomData) {
     try {
-      const res = await request.post('/chatRoom', roomData)
+      const res = await createChatRoom(roomData)
       return res
     } catch (error) {
       console.error('创建聊天室失败:', error)
@@ -67,10 +80,10 @@ const actions = {
     }
   },
 
-  // 更新聊天室状态
-  async updateRoomStatus(_, { roomId, status }) {
+  // 更新聊天室开放状态
+  async updateRoomAvailability(_, { roomId, isAvailable }) {
     try {
-      const res = await request.put(`/chatRoom/${roomId}/status`, { status })
+      const res = await updateChatRoomStatus(roomId, isAvailable)
       return res
     } catch (error) {
       console.error('更新聊天室状态失败:', error)
@@ -78,10 +91,21 @@ const actions = {
     }
   },
 
+  // 更新聊天室禁言状态
+  async updateRoomChatStatus(_, { roomId, isChat }) {
+    try {
+      const res = await updateChatRoomChatStatus(roomId, isChat)
+      return res
+    } catch (error) {
+      console.error('更新聊天室禁言状态失败:', error)
+      return { code: '-1', msg: '更新聊天室禁言状态失败' }
+    }
+  },
+
   // 删除聊天室
   async deleteChatRoom(_, roomId) {
     try {
-      const res = await request.delete(`/chatRoom/${roomId}`)
+      const res = await deleteChatRoom(roomId)
       return res
     } catch (error) {
       console.error('删除聊天室失败:', error)

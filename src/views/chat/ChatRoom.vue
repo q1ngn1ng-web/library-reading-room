@@ -1,6 +1,31 @@
 <template>
   <div class="chat-room">
     <el-alert
+      v-if="!hasActiveReservation"
+      title="您需要先预约座位才能使用聊天室"
+      type="warning"
+      description="请前往座位预约页面预约座位。"
+      show-icon
+      :closable="false"
+      style="margin-bottom: 15px;"
+    >
+      <el-button size="small" type="primary" @click="goToSeatReservation">
+        前往预约
+      </el-button>
+    </el-alert>
+
+    <el-alert
+      v-if="currentRoom && !currentRoom.is_chat"
+      title="当前聊天室已禁言"
+      type="warning"
+      description="管理员已开启禁言模式，暂时无法发送消息。"
+      show-icon
+      :closable="false"
+      style="margin-bottom: 15px;"
+    >
+    </el-alert>
+
+    <el-alert
       v-if="connectionError"
       title="WebSocket连接失败"
       type="error"
@@ -17,8 +42,8 @@
     <el-card class="room-info-card">
       <div slot="header" class="room-header">
         <h3 v-if="currentRoom">{{ currentRoom.floor }}楼 | {{ currentRoom.category }}</h3>
-        <el-tag :type="currentRoom && currentRoom.status ? 'success' : 'danger'" size="small">
-          {{ currentRoom && currentRoom.status ? '开放' : '关闭' }}
+        <el-tag :type="currentRoom && currentRoom.is_available ? 'success' : 'danger'" size="small">
+          {{ currentRoom && currentRoom.is_available ? '开放' : '关闭' }}
         </el-tag>
       </div>
       <div class="user-count">
@@ -67,12 +92,12 @@
               type="textarea"
               :rows="3"
               placeholder="请输入消息"
-              :disabled="!currentRoom || !currentRoom.status"
+              :disabled="!currentRoom || !currentRoom.is_available || !currentRoom.is_chat"
               @keyup.ctrl.enter.native="sendMessage"
             ></el-input>
             <el-button
               type="primary"
-              :disabled="!messageContent.trim() || !currentRoom || !currentRoom.status"
+              :disabled="!messageContent.trim() || !currentRoom || !currentRoom.is_available || !currentRoom.is_chat"
               @click="sendMessage"
             >
               发送
@@ -102,7 +127,8 @@ export default {
       isConnected: false,
       showDebugInfo: true,
       connectionError: false, // 添加连接错误状态
-      reconnectTimer: null // 用于管理重连定时器
+      reconnectTimer: null, // 用于管理重连定时器
+      hasActiveReservation: false // 添加有效预约状态
     }
   },
   computed: {
@@ -133,7 +159,8 @@ export default {
       this.$message.error(errorMsg || 'WebSocket连接失败，请刷新页面重试');
     },
     sendMessage() {
-      if (this.messageContent.trim() && this.wsService && this.currentRoom && this.currentRoom.status) {
+      if (this.messageContent.trim() && this.wsService && this.currentRoom &&
+          this.currentRoom.is_available && this.currentRoom.is_chat) {
         const success = this.wsService.sendMessage(this.messageContent, this.isAnonymous)
         if (success) {
           this.messageContent = ''
@@ -237,12 +264,35 @@ export default {
         this.$message.error('加载聊天室信息失败')
         return false
       }
+    },
+    // 检查是否有活跃预约
+    checkActiveReservation() {
+      const activeReservation = localStorage.getItem('activeReservation')
+      this.hasActiveReservation = !!activeReservation
+
+      // 如果没有活跃预约，可以选择自动跳转到座位预约页面
+      if (!this.hasActiveReservation) {
+        console.warn('用户没有活跃的预约，无法使用聊天室')
+      }
+
+      return this.hasActiveReservation
+    },
+    // 跳转到座位预约页面
+    goToSeatReservation() {
+      this.$router.push('/seat-reservation')
     }
   },
   async created() {
     this.roomId = parseInt(this.$route.params.id)
     if (!this.roomId) {
       this.$router.push('/chat-rooms')
+      return
+    }
+
+    // 检查是否有活跃预约
+    if (!this.checkActiveReservation()) {
+      // 如果没有预约，仍然加载聊天室信息，但不连接WebSocket
+      await this.loadRoomData()
       return
     }
 

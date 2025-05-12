@@ -9,6 +9,7 @@ import Layout from "@/views/user/Layout.vue";
 import Register from "@/views/user/Register";
 
 import Person from "@/views/user/Profile.vue";
+import SeatReservation from "@/views/user/SeatReservation.vue";
 
 import AdminDashboard from "@/views/admin/Dashboard";
 import Notice from "@/views/admin/Notice";
@@ -33,6 +34,8 @@ const routes = [
       // 单个聊天室
       { path: 'chat-room/:id', component: ChatRoom },
       { path: 'person', component: Person },
+      // 座位预约
+      { path: 'seat-reservation', component: SeatReservation },
     ]
   },
   { path: '/admin', component: AdminDashboard },
@@ -62,6 +65,16 @@ router.beforeEach((to, from, next) => {
       return next("/login");
     }
     return next();
+  }
+
+  // 聊天室相关路由
+  if (to.path.startsWith('/chat-room/')) {
+    // 检查是否有有效的预约
+    const activeReservation = localStorage.getItem('activeReservation');
+    if (!activeReservation && userToken) {
+      // 如果没有活跃预约，重定向到座位预约页面
+      return next('/seat-reservation');
+    }
   }
 
   // 其他页面的访问控制
