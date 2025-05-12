@@ -14,8 +14,7 @@
 
     <!-- 当前活跃预约提示 -->
     <el-alert
-      v-if="activeReservation"
-      :title="`您当前有一个预约: ${activeReservation.floorNumber}楼 ${activeReservation.seatNumber}号座位`"
+      v-if="activeReservation && activeReservation.floorNumber && activeReservation.seatNumber"
       type="info"
       :closable="false"
       show-icon
@@ -88,20 +87,29 @@
       :visible.sync="showSeatDetailDialog"
       width="500px"
     >
-      <div v-if="selectedSeat">
+      <div v-if="selectedSeat" class="seat-detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="座位号">
-            {{ selectedSeat.number }} ({{ selectedSeat.room_id }}楼)
+            {{ selectedSeat.seatNumber || selectedSeat.number }} ({{ selectedSeat.roomId || selectedSeat.room_id }}楼)
           </el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusTagType(selectedSeat.status)">
               {{ getStatusText(selectedSeat.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="预约人" v-if="selectedSeat.user_id">
-            {{ selectedSeat.user_id }}
+          <el-descriptions-item label="位置" v-if="selectedSeat.position">
+            {{ selectedSeat.position }}
+          </el-descriptions-item>
+          <el-descriptions-item label="预约人" v-if="selectedSeat.userId || selectedSeat.user_id">
+            {{ selectedSeat.userName || selectedSeat.user_name || selectedSeat.userId || selectedSeat.user_id }}
           </el-descriptions-item>
         </el-descriptions>
+
+        <div class="action-buttons" v-if="isSeatAvailable(selectedSeat)">
+          <el-button type="primary" @click="openReservationDialog(selectedSeat)">
+            预约此座位
+          </el-button>
+        </div>
       </div>
       <span slot="footer" class="dialog-footer">
         <el-button @click="showSeatDetailDialog = false">关闭</el-button>
@@ -218,7 +226,9 @@ export default {
 
     // 获取当前用户信息
     currentUser() {
-      return JSON.parse(localStorage.getItem('user') || '{}')
+      const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
+      console.log('当前用户信息:', userInfo)
+      return userInfo
     }
   },
   // 初始化座位数据
@@ -255,78 +265,83 @@ export default {
       'stopTimeoutChecker'
     ]),
 
-    // 座位点击处理
-    async handleSeatClick(seat) {
-      if (!seat) return
-
+    // 处理座位点击
+    handleSeatClick(seat) {
+      console.log('点击座位:', seat)
       this.selectedSeat = seat
 
-      // 如果座位可用，显示预约对话框
-      if (isSeatAvailable(seat)) {
-        this.reservationForm.seatId = seat.id
-        this.reservationForm.userId = this.currentUser.id || ''
-        this.reservationForm.roomId = seat.room_id
-        this.reservationForm.number = seat.number
-        this.showReservationDialog = true
-      } else {
-        // 否则显示座位详情
-        this.showSeatDetailDialog = true
-      }
+      // 显示座位详情对话框
+      this.showSeatDetailDialog = true
     },
 
-    // 验证预约表单
-    validateForm() {
-      if (!this.reservationForm.date) {
-        this.$message.warning('请选择预约日期')
-        return false
+    // 打开预约对话框
+    openReservationDialog(seat) {
+      if (!seat || !isSeatAvailable(seat)) {
+        this.$message.warning('该座位不可预约')
+        return
       }
 
-      if (!this.reservationForm.startTime || !this.reservationForm.endTime) {
-        this.$message.warning('请选择预约时间段')
-        return false
+      // 关闭座位详情对话框
+      this.showSeatDetailDialog = false
+
+      // 设置预约表单
+      this.reservationForm = {
+        userId: this.currentUser.id,
+        seatId: seat.id,
+        roomId: seat.roomId || seat.room_id,
+        seatNumber: seat.seatNumber || seat.number,
+        date: getCurrentDateString(),
+        startTime: '',
+        endTime: '',
+        remark: ''
       }
 
-      if (!validateTimeRange(this.reservationForm.startTime, this.reservationForm.endTime)) {
-        this.$message.warning('结束时间必须晚于开始时间')
-        return false
-      }
-
-      return true
+      // 显示预约对话框
+      this.showReservationDialog = true
     },
 
     // 提交预约
     async submitReservation() {
-      if (!this.validateForm()) return
+      if (!this.reservationForm.startTime || !this.reservationForm.endTime) {
+        this.$message.warning('请选择预约时间段')
+        return
+      }
+
+      if (!this.currentUser || !this.currentUser.id) {
+        this.$message.error('用户信息不完整，请重新登录')
+        return
+      }
 
       this.submitting = true
-
       try {
-        // 合并日期时间
-        const startTime = combineDateTime(this.reservationForm.date, this.reservationForm.startTime)
-        const endTime = combineDateTime(this.reservationForm.date, this.reservationForm.endTime)
-
+        // 构建预约数据 - 使用驼峰命名法匹配后端实体类字段
         const reservationData = {
-          user_id: this.currentUser.id,
-          seat_id: this.reservationForm.seatId,
-          start_time: startTime,
-          end_time: endTime,
+          userId: this.currentUser.id, // 确保用户ID正确传递
+          seatId: this.reservationForm.seatId,
+          startTime: combineDateTime(this.reservationForm.date, this.reservationForm.startTime),
+          endTime: combineDateTime(this.reservationForm.date, this.reservationForm.endTime),
+          status: 0,  // 预约状态，可能需要根据后端定义设置
+          // 以下字段可能不是必需的，但保留以便后端处理
+          floorNumber: this.currentFloor,
+          seatNumber: this.reservationForm.seatNumber,
           remark: this.reservationForm.remark
         }
 
-        const result = await this.reserveSeat(reservationData)
+        console.log('发送预约数据:', reservationData)
 
+        // 提交预约
+        const result = await this.reserveSeat(reservationData)
         if (result.success) {
           this.$message.success('预约成功')
           this.showReservationDialog = false
-
-          // 重新获取座位数据
-          await this.fetchFloorSeats(this.currentFloor)
+          // 刷新座位数据
+          this.fetchFloorSeats(this.currentFloor)
         } else {
           this.$message.error(result.message || '预约失败')
         }
       } catch (error) {
         console.error('提交预约失败:', error)
-        this.$message.error('预约提交失败，请重试')
+        this.$message.error('预约失败，请重试')
       } finally {
         this.submitting = false
       }
@@ -399,7 +414,8 @@ export default {
     getStatusText,
     getStatusTagType,
     getSeatClass,
-    formatDateTime
+    formatDateTime,
+    isSeatAvailable
   }
 }
 </script>
@@ -446,24 +462,40 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 15px;
   margin-top: 20px;
+  padding: 20px;
+  background-color: #f5f7fa;
+  border-radius: 8px;
 }
 
 .seat {
   position: relative;
   width: 80px;
   height: 80px;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-weight: bold;
 }
 
 .seat:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.seat:before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 8px;
+  background-color: inherit;
+  border-radius: 4px 4px 0 0;
 }
 
 .seat-number {
@@ -489,5 +521,15 @@ export default {
 .seat-maintenance {
   background-color: #F56C6C;
   color: white;
+}
+
+.seat-detail {
+  padding: 10px;
+}
+
+.action-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>

@@ -5,6 +5,7 @@ export function userLogin(data) {
   return request({
     url: '/user/login',
     method: 'post',
+    role: 'user',
     data
   })
 }
@@ -14,6 +15,7 @@ export function userRegister(data) {
   return request({
     url: '/user/register',
     method: 'post',
+    role: 'user',
     data
   })
 }
@@ -23,6 +25,7 @@ export function updateUserPassword(data) {
   return request({
     url: '/user/password',
     method: 'post',
+    role: 'user',
     data
   })
 }
@@ -31,7 +34,8 @@ export function updateUserPassword(data) {
 export function getUserInfo(id) {
   return request({
     url: `/user/${id}`,
-    method: 'get'
+    method: 'get',
+    role: 'user'
   })
 }
 
@@ -40,6 +44,7 @@ export function updateUser(id, data) {
   return request({
     url: `/user/${id}`,
     method: 'put',
+    role: 'user',
     data
   })
 }

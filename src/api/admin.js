@@ -5,6 +5,7 @@ export function adminLogin(data) {
   return request({
     url: '/admin/login',
     method: 'post',
+    role: 'admin',
     data
   })
 }
@@ -14,6 +15,7 @@ export function updateAdminPassword(data) {
   return request({
     url: '/admin/password',
     method: 'post',
+    role: 'admin',
     data
   })
 }
@@ -22,7 +24,8 @@ export function updateAdminPassword(data) {
 export function getAdminInfo(id) {
   return request({
     url: `/admin/find/${id}`,
-    method: 'get'
+    method: 'get',
+    role: 'admin'
   })
 }
 
@@ -31,6 +34,7 @@ export function updateAdmin(id, data) {
   return request({
     url: `/admin/update/${id}`,
     method: 'put',
+    role: 'admin',
     data
   })
 }

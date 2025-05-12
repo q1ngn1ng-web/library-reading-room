@@ -13,24 +13,34 @@ const request = axios.create({
 // 可以自请求发送前对请求做一些处理
 // 比如统一加token，对请求参数统一加密
 request.interceptors.request.use(config => {
-    // 任意组件或 request.js
-    // console.log("当前 BASE_API:", process.env.VUE_APP_BASE_API);
-    const isAdminRequest = config.url.startsWith('/admin');
-
+    // 设置默认Content-Type
     config.headers['Content-Type'] = 'application/json;charset=utf-8';
 
-    const tokenKey = isAdminRequest
-        ? localStorage.getItem('admin-token')
-        : localStorage.getItem('user-token');
-    const token = localStorage.getItem(tokenKey);
+    // 1. 优先使用显式传递的role参数
+    let role = '';
+
+    // 检查是否在请求配置中指定了role
+    if (config.role) {
+        role = config.role;
+        // 从config中删除role参数，避免发送到后端
+        delete config.role;
+    } else {
+        // 2. 兼容原有逻辑：通过URL前缀判断
+        role = config.url.startsWith('/admin') ? 'admin' : 'user';
+    }
+
+    // 添加角色标识到请求头
+    config.headers['X-Role'] = role;
+
+    // 根据角色获取对应的token
+    const token = localStorage.getItem(`${role}-token`);
     if (token) {
         config.headers['token'] = token;
     }
 
-    // config.headers['token'] = user.token;  // 设置请求头
-    return config
+    return config;
 }, error => {
-    return Promise.reject(error)
+    return Promise.reject(error);
 });
 
 // response 拦截器

@@ -95,15 +95,31 @@ const actions = {
   async fetchFloorSeats({ commit }, floorNumber) {
     try {
       const response = await getSeatStatus(floorNumber)
-      console.log('获取座位状态:', response.data)
-      if (response.code === '0') {
+      console.log('获取到的座位状态:', response)
+
+      // 检查响应结构
+      if (response.code === '0' && response.data) {
+        // 标准响应格式
+        const seats = response.data
         commit('SET_FLOOR_SEATS', {
           floorNumber,
-          seats: response.data
+          seats: seats
         })
-        return response.data
+        console.log('更新楼层座位状态成功(标准格式):', seats)
+        return seats
+      } else if (Array.isArray(response)) {
+        // 数组格式（后端直接返回数组）
+        const seats = response
+        commit('SET_FLOOR_SEATS', {
+          floorNumber,
+          seats: seats
+        })
+        console.log('更新楼层座位状态成功(数组格式):', seats)
+        return seats
+      } else {
+        console.warn('座位数据格式不符合预期:', response)
+        return []
       }
-      return []
     } catch (error) {
       console.error('获取座位状态失败:', error)
       return []
@@ -134,23 +150,27 @@ const actions = {
     try {
       const response = await reserveSeat(reservationData)
       if (response.code === '0') {
-        // 更新活跃预约
-        commit('SET_ACTIVE_RESERVATION', {
+        // 确保预约数据包含所有必需字段
+        const activeReservation = {
           ...response.data,
           // 确保包含必要信息
-          floorNumber: reservationData.floorNumber,
-          seatNumber: reservationData.seatNumber
-        })
+          floorNumber: reservationData.floorNumber || response.data.floorNumber,
+          seatNumber: reservationData.seatNumber || response.data.seatNumber,
+          status: response.data.status || 'reserved'
+        }
+
+        // 更新活跃预约
+        commit('SET_ACTIVE_RESERVATION', activeReservation)
 
         // 更新该座位状态
         await dispatch('fetchSeatDetail', {
-          floorNumber: reservationData.floorNumber,
-          seatNumber: reservationData.seatNumber
+          floorNumber: activeReservation.floorNumber,
+          seatNumber: activeReservation.seatNumber
         })
 
         return {
           success: true,
-          data: response.data
+          data: activeReservation
         }
       }
 
@@ -307,7 +327,14 @@ const actions = {
       // 首先检查本地存储
       const storedReservation = localStorage.getItem('activeReservation')
       if (storedReservation) {
-        commit('SET_ACTIVE_RESERVATION', JSON.parse(storedReservation))
+        const parsedReservation = JSON.parse(storedReservation)
+        // 检查预约信息的完整性
+        if (parsedReservation && parsedReservation.floorNumber && parsedReservation.seatNumber) {
+          commit('SET_ACTIVE_RESERVATION', parsedReservation)
+        } else {
+          // 如果预约信息不完整，清除本地存储
+          localStorage.removeItem('activeReservation')
+        }
       }
 
       // 然后从服务器获取最新状态
