@@ -54,7 +54,7 @@ public class ReservationServiceImpl implements ReservationService {
         // Set timeout for check-in (30 minutes from now)
         Date timeoutAt = new Date(now.getTime() + 30 * 60 * 1000);
         reservation.setTimeoutAt(timeoutAt);
-
+        System.out.println("ReservationServiceImpl.reservation::"+reservation);
         // Insert the reservation
         reservationDao.insert(reservation);
 

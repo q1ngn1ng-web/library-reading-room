@@ -3,7 +3,7 @@
 <mapper namespace="com.example.dao.ReservationDao">
     <!-- Complex query to find reservations by search criteria -->
     <select id="findBySearch" resultType="com.example.entity.Reservation" parameterType="com.example.entity.Params">
-        select r.*, u.name as userName from reservation r
+        select r.*, u.username as userName from reservation r
         left join user u on r.user_id = u.id
         <where>
             <if test="params != null and params.userId != null">

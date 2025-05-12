@@ -16,6 +16,7 @@ public class SeatController {
     @Autowired
     private SeatService seatService;
     private static final Logger log = LoggerFactory.getLogger(SeatController.class);
+
     /**
      * Get all seats by room/floor
      *
@@ -23,13 +24,12 @@ public class SeatController {
      * @return List of seats
      */
     @GetMapping("/status")
-    public List<Seat> getSeatsByRoom(@RequestParam("roomId") Integer roomId) {
-        System.out.println("/seats/status,getSeatsByRoom:");
-        log.info("获取座位状态请求，roomId: {}", roomId);
+    public Result getSeatsByRoom(@RequestParam("roomId") Integer roomId) {
+//        System.out.println("/seats/status,getSeatsByRoom:");
+//        log.info("获取座位状态请求，roomId: {}", roomId);
         List<Seat> seats = seatService.getSeatsByRoom(roomId);
-        log.info("找到 {} 个座位", seats.size());
-//        return seats;
-        return seats;
+//        log.info("找到 {} 个座位", seats.size());
+        return Result.success(seats);
     }
 
     /**

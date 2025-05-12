@@ -30,16 +30,41 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // 1. 从http请求的header中获取token
-        String token = request.getHeader("token");
-        if (StrUtil.isBlank(token)) {
-            // 如果没拿到，我再去参数里面拿一波试试  /api/admin?token=xxxxx
-            token = request.getParameter("token");
+        // 1. 从请求头获取角色信息，默认为user
+        String role = request.getHeader("X-Role");
+        if (StrUtil.isBlank(role)) {
+            role = "user"; // 如果没有指定，默认为用户角色
         }
+
+        // 根据角色确定要使用的token类型
+        String tokenKey = "user-token";
+        if ("admin".equalsIgnoreCase(role)) {
+            tokenKey = "admin-token";
+        }
+
+        log.info("请求路径: {}, 角色: {}, 使用token类型: {}", request.getRequestURI(), role, tokenKey);
+
+        // 从http请求的header中获取相应的token
+        String token = request.getHeader(tokenKey);
+
+        if (StrUtil.isBlank(token)) {
+            // 尝试从通用token头中获取
+            token = request.getHeader("token");
+
+            // 如果还是没有，尝试从URL参数中获取
+            if (StrUtil.isBlank(token)) {
+                token = request.getParameter(tokenKey);
+                if (StrUtil.isBlank(token)) {
+                    token = request.getParameter("token");
+                }
+            }
+        }
+
         // 2. 开始执行认证
         if (StrUtil.isBlank(token)) {
             throw new CustomException("无token，请重新登录");
         }
+
         // 获取 token 中的userId
         String userId;
         User user;
@@ -55,10 +80,23 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (user == null) {
             throw new CustomException("用户不存在，请重新登录");
         }
+
+        // 验证角色与token是否匹配
+        boolean isAdmin = user.getRole() != null && "admin".equalsIgnoreCase(user.getRole());
+
+        if ("admin".equalsIgnoreCase(role) && !isAdmin) {
+            throw new CustomException("无权限执行管理员操作");
+        }
+
         try {
             // 用户密码加签验证 token
             JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(user.getPassword())).build();
             jwtVerifier.verify(token); // 验证token
+
+            // 验证成功后，将用户ID设置到request中，供后续的Controller使用
+            request.setAttribute("userId", user.getId());
+            request.setAttribute("userRole", isAdmin ? "admin" : "user");
+            log.info("设置用户ID到请求中: {}, 角色: {}", user.getId(), isAdmin ? "admin" : "user");
         } catch (JWTVerificationException e) {
             throw new CustomException("token验证失败，请重新登录");
         }

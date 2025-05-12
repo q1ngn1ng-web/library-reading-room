@@ -5,10 +5,13 @@ import com.example.entity.Params;
 import com.example.entity.Reservation;
 import com.example.service.ReservationService;
 import com.github.pagehelper.PageInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Enumeration;
 
 @RestController
 @RequestMapping("/reservations")
@@ -16,24 +19,52 @@ public class ReservationController {
 
     @Autowired
     private ReservationService reservationService;
+    private static final Logger log = LoggerFactory.getLogger(ReservationController.class);
 
     /**
      * Create a new reservation
-     * 
+     *
      * @param reservation Reservation details
      * @return Result with reservation ID
      */
     @PostMapping("/reserve")
     public Result reserve(@RequestBody Reservation reservation, HttpServletRequest request) {
         // Extract user ID from request attributes (set by JWT interceptor)
+//        log.info("预约请求开始处理");
+//        log.info("请求头信息:");
+
+        // 打印所有请求头
+//        Enumeration<String> headerNames = request.getHeaderNames();
+//        while (headerNames.hasMoreElements()) {
+//            String headerName = headerNames.nextElement();
+//            log.info("Header {}: {}", headerName, request.getHeader(headerName));
+//        }
+
+        // 打印所有请求属性
+//        log.info("请求属性信息:");
+//        Enumeration<String> attributeNames = request.getAttributeNames();
+//        while (attributeNames.hasMoreElements()) {
+//            String attributeName = attributeNames.nextElement();
+//            log.info("Attribute {}: {}", attributeName, request.getAttribute(attributeName));
+//        }
+
         Integer userId = (Integer) request.getAttribute("userId");
+//        log.info("从请求中获取的userId: {}", userId);
+
+        if (userId == null) {
+            log.error("userId为空，JWT拦截器可能没有正确设置或该请求路径没有经过拦截器");
+            return Result.error("用户未登录或会话已过期");
+        }
+
         reservation.setUserId(userId);
+//        log.info("设置userId后的reservation: {}", reservation);
+
         return reservationService.reserve(reservation);
     }
 
     /**
      * Cancel a reservation
-     * 
+     *
      * @param reservationId Reservation ID
      * @return Operation result
      */
@@ -46,7 +77,7 @@ public class ReservationController {
 
     /**
      * Check in for a reservation
-     * 
+     *
      * @param reservationId Reservation ID
      * @return Operation result
      */
@@ -57,7 +88,7 @@ public class ReservationController {
 
     /**
      * Check out from a reservation
-     * 
+     *
      * @param reservationId Reservation ID
      * @return Operation result
      */
@@ -68,7 +99,7 @@ public class ReservationController {
 
     /**
      * Get current active reservation
-     * 
+     *
      * @return Current reservation
      */
     @GetMapping("/current")
@@ -79,7 +110,7 @@ public class ReservationController {
 
     /**
      * Get reservation history
-     * 
+     *
      * @param page   Page number
      * @param size   Page size
      * @param status Optional status filter
@@ -97,7 +128,7 @@ public class ReservationController {
 
     /**
      * Check if a reservation has timed out
-     * 
+     *
      * @param reservationId Reservation ID
      * @return Timeout status
      */
@@ -108,7 +139,7 @@ public class ReservationController {
 
     /**
      * Search reservations (admin only)
-     * 
+     *
      * @param params Search parameters
      * @param page   Page number
      * @param size   Page size
