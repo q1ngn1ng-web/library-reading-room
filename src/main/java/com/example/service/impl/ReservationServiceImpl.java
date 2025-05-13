@@ -207,7 +207,9 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public Result getCurrentReservation(Integer userId) {
+        System.out.println("查询当前预约 - 用户ID: " + userId);
         Reservation reservation = reservationDao.findCurrentByUserId(userId);
+        System.out.println("查询结果: " + reservation);
         if (reservation == null) {
             return Result.success("No active reservation found.");
         }

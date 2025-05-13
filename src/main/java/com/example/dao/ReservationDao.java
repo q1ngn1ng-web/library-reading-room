@@ -14,7 +14,11 @@ import java.util.List;
 @Repository
 public interface ReservationDao extends Mapper<Reservation> {
 
-    @Select("select * from reservation where user_id = #{userId} and status in (1, 5) limit 1")
+    @Select("select id, user_id as userId, seat_id as seatId, start_time as startTime, " +
+            "end_time as endTime, timeout_at as timeoutAt, real_start_time as realStartTime, " +
+            "real_end_time as realEndTime, status " +
+            "from reservation where user_id = #{userId} and status in (1, 5) " +
+            "order by id desc limit 1")
     Reservation findCurrentByUserId(@Param("userId") Integer userId);
 
     @Select("select * from reservation where user_id = #{userId} order by create_time desc")

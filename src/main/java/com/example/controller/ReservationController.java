@@ -92,11 +92,17 @@ public class ReservationController {
     @GetMapping("/current")
     public Result getCurrentReservation(HttpServletRequest request) {
         Integer userId = (Integer) request.getAttribute("userId");
+        log.info("获取当前预约信息 - 用户ID: {}", userId);
+
         Result result = reservationService.getCurrentReservation(userId);
+        log.info("查询结果: {}", result.getData());
 
         // If there's a reservation, get seat information too
         if (result.getData() instanceof Reservation) {
             Reservation reservation = (Reservation) result.getData();
+            log.info("预约详情: id={}, userId={}, seatId={}, status={}",
+                    reservation.getId(), reservation.getUserId(),
+                    reservation.getSeatId(), reservation.getStatus());
 
             if (reservation != null && reservation.getSeatId() != null) {
                 // Get the corresponding seat
