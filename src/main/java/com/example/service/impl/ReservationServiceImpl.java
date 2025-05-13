@@ -12,12 +12,15 @@ import com.example.service.ReservationService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ReservationServiceImpl implements ReservationService {
@@ -27,6 +30,31 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Autowired
     private SeatDao seatDao;
+
+    @Autowired(required = false)
+    private SimpMessagingTemplate messagingTemplate;
+
+    // 添加一个辅助方法来广播座位和预约状态变更
+    private void broadcastStatusChange(Integer userId, Reservation reservation, Seat seat) {
+        if (messagingTemplate != null && userId != null) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "reservationUpdate");
+            payload.put("reservation", reservation);
+            payload.put("seat", seat);
+
+            // 发送给具体用户
+            messagingTemplate.convertAndSendToUser(
+                    userId.toString(),
+                    "/queue/reservations",
+                    payload);
+
+            // 同时广播座位状态变化给所有用户
+            Map<String, Object> seatUpdate = new HashMap<>();
+            seatUpdate.put("type", "seatUpdate");
+            seatUpdate.put("seat", seat);
+            messagingTemplate.convertAndSend("/topic/seats", seatUpdate);
+        }
+    }
 
     @Override
     @Transactional
@@ -54,13 +82,16 @@ public class ReservationServiceImpl implements ReservationService {
         // Set timeout for check-in (30 minutes from now)
         Date timeoutAt = new Date(now.getTime() + 30 * 60 * 1000);
         reservation.setTimeoutAt(timeoutAt);
-        System.out.println("ReservationServiceImpl.reservation::"+reservation);
+
         // Insert the reservation
         reservationDao.insert(reservation);
 
         // Update seat status to RESERVED
         seat.setStatus(SeatStatus.RESERVED.getCode());
         seatDao.updateByPrimaryKey(seat);
+
+        // 广播状态变更
+        broadcastStatusChange(reservation.getUserId(), reservation, seat);
 
         // Create a result with success message and set the reservation ID as data
         Result result = Result.success();
@@ -85,11 +116,17 @@ public class ReservationServiceImpl implements ReservationService {
         // Update reservation status
         reservationDao.updateStatus(reservationId, ReservationStatus.CANCELLED.getCode());
 
+        // Fetch updated reservation
+        reservation = reservationDao.selectByPrimaryKey(reservationId);
+
         // Free up the seat
         Seat seat = seatDao.selectByPrimaryKey(reservation.getSeatId());
         if (seat != null) {
             seat.setStatus(SeatStatus.AVAILABLE.getCode());
             seatDao.updateByPrimaryKey(seat);
+
+            // 广播状态变更
+            broadcastStatusChange(reservation.getUserId(), reservation, seat);
         }
 
         return Result.success("Reservation cancelled successfully.");
@@ -116,13 +153,19 @@ public class ReservationServiceImpl implements ReservationService {
 
         // Update reservation status and set real start time
         reservation.setRealStartTime(now);
-        reservationDao.checkIn(reservationId, ReservationStatus.SUCCESS.getCode(), now);
+        reservationDao.checkIn(reservationId, ReservationStatus.CHECKED_IN.getCode(), now);
+
+        // Fetch updated reservation
+        reservation = reservationDao.selectByPrimaryKey(reservationId);
 
         // Update seat status to IN_USE
         Seat seat = seatDao.selectByPrimaryKey(reservation.getSeatId());
         if (seat != null) {
             seat.setStatus(SeatStatus.IN_USE.getCode());
             seatDao.updateByPrimaryKey(seat);
+
+            // 广播状态变更
+            broadcastStatusChange(reservation.getUserId(), reservation, seat);
         }
 
         return Result.success("Check-in successful.");
@@ -137,7 +180,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         // Check if the reservation is in use
-        if (reservation.getStatus() != ReservationStatus.SUCCESS.getCode() ||
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN.getCode() ||
                 reservation.getRealStartTime() == null) {
             return Result.error("Only checked-in reservations can be checked out.");
         }
@@ -146,11 +189,17 @@ public class ReservationServiceImpl implements ReservationService {
         Date now = new Date();
         reservationDao.checkout(reservationId, ReservationStatus.SUCCESS.getCode(), now);
 
+        // Fetch updated reservation
+        reservation = reservationDao.selectByPrimaryKey(reservationId);
+
         // Free up the seat
         Seat seat = seatDao.selectByPrimaryKey(reservation.getSeatId());
         if (seat != null) {
             seat.setStatus(SeatStatus.AVAILABLE.getCode());
             seatDao.updateByPrimaryKey(seat);
+
+            // 广播状态变更
+            broadcastStatusChange(reservation.getUserId(), reservation, seat);
         }
 
         return Result.success("Check-out successful.");

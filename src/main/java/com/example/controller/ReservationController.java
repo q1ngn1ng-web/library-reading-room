@@ -1,6 +1,7 @@
 package com.example.controller;
 
 import com.example.common.Result;
+import com.example.dao.SeatDao;
 import com.example.entity.Params;
 import com.example.entity.Reservation;
 import com.example.service.ReservationService;
@@ -19,6 +20,10 @@ public class ReservationController {
 
     @Autowired
     private ReservationService reservationService;
+
+    @Autowired
+    private SeatDao seatDao;
+
     private static final Logger log = LoggerFactory.getLogger(ReservationController.class);
 
     /**
@@ -29,27 +34,9 @@ public class ReservationController {
      */
     @PostMapping("/reserve")
     public Result reserve(@RequestBody Reservation reservation, HttpServletRequest request) {
-        // Extract user ID from request attributes (set by JWT interceptor)
-//        log.info("预约请求开始处理");
-//        log.info("请求头信息:");
-
-        // 打印所有请求头
-//        Enumeration<String> headerNames = request.getHeaderNames();
-//        while (headerNames.hasMoreElements()) {
-//            String headerName = headerNames.nextElement();
-//            log.info("Header {}: {}", headerName, request.getHeader(headerName));
-//        }
-
-        // 打印所有请求属性
-//        log.info("请求属性信息:");
-//        Enumeration<String> attributeNames = request.getAttributeNames();
-//        while (attributeNames.hasMoreElements()) {
-//            String attributeName = attributeNames.nextElement();
-//            log.info("Attribute {}: {}", attributeName, request.getAttribute(attributeName));
-//        }
 
         Integer userId = (Integer) request.getAttribute("userId");
-//        log.info("从请求中获取的userId: {}", userId);
+        // log.info("从请求中获取的userId: {}", userId);
 
         if (userId == null) {
             log.error("userId为空，JWT拦截器可能没有正确设置或该请求路径没有经过拦截器");
@@ -57,9 +44,9 @@ public class ReservationController {
         }
 
         reservation.setUserId(userId);
-//        log.info("设置userId后的reservation: {}", reservation);
+        // log.info("设置userId后的reservation: {}", reservation);
 
-        return reservationService.reserve(reservation);
+        return reservationService.reserve(reservation);// 这个是一个result
     }
 
     /**
@@ -105,7 +92,32 @@ public class ReservationController {
     @GetMapping("/current")
     public Result getCurrentReservation(HttpServletRequest request) {
         Integer userId = (Integer) request.getAttribute("userId");
-        return reservationService.getCurrentReservation(userId);
+        Result result = reservationService.getCurrentReservation(userId);
+
+        // If there's a reservation, get seat information too
+        if (result.getData() instanceof Reservation) {
+            Reservation reservation = (Reservation) result.getData();
+
+            if (reservation != null && reservation.getSeatId() != null) {
+                // Get the corresponding seat
+                try {
+                    Object seat = seatDao.selectByPrimaryKey(reservation.getSeatId());
+                    if (seat == null) {
+                        // 座位不存在的情况
+                        return Result.error("无法找到对应的座位信息，座位ID: " + reservation.getSeatId());
+                    }
+                    return Result.success()
+                            .setDataAndReturn(java.util.Map.of(
+                                    "reservation", reservation,
+                                    "seat", seat));
+                } catch (Exception e) {
+                    log.error("Error getting seat information", e);
+                    return Result.error("获取座位信息失败: " + e.getMessage());
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -151,5 +163,16 @@ public class ReservationController {
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "10") Integer size) {
         return reservationService.findBySearch(params, page, size);
+    }
+
+    /**
+     * Get all seat statuses
+     * This endpoint is public and doesn't require authentication
+     *
+     * @return List of all seats with their current status
+     */
+    @GetMapping("/status/seats")
+    public Result getAllSeatStatuses() {
+        return Result.success(seatDao.selectAll());
     }
 }

@@ -4,7 +4,8 @@ public enum ReservationStatus {
     SUCCESS(1, "成功"),
     FAILED(2, "失败"),
     TIMEOUT(3, "超时"),
-    CANCELLED(4, "取消");
+    CANCELLED(4, "取消"),
+    CHECKED_IN(5, "已签到");
 
     private final int code;
     private final String description;

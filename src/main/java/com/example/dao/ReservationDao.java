@@ -14,7 +14,7 @@ import java.util.List;
 @Repository
 public interface ReservationDao extends Mapper<Reservation> {
 
-    @Select("select * from reservation where user_id = #{userId} and status in (0, 1) limit 1")
+    @Select("select * from reservation where user_id = #{userId} and status in (1, 5) limit 1")
     Reservation findCurrentByUserId(@Param("userId") Integer userId);
 
     @Select("select * from reservation where user_id = #{userId} order by create_time desc")
@@ -23,7 +23,7 @@ public interface ReservationDao extends Mapper<Reservation> {
     @Select("select * from reservation where user_id = #{userId} and status = #{status} order by create_time desc")
     List<Reservation> findHistoryByUserIdAndStatus(@Param("userId") Integer userId, @Param("status") Integer status);
 
-    @Select("select * from reservation where status = 0 and timeout_at < #{now}")
+    @Select("select * from reservation where status = 1 and timeout_at < #{now}")
     List<Reservation> findTimeoutReservations(@Param("now") Date now);
 
     @Update("update reservation set status = #{status} where id = #{id}")
