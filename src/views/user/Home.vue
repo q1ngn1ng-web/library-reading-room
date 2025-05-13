@@ -33,6 +33,11 @@
             style="width: 100%"
             v-loading="loading"
           >
+            <template v-slot:empty>
+              <div class="empty-tip">
+                <i class="el-icon-info"></i> 当前没有进行中的预约
+              </div>
+            </template>
             <el-table-column label="楼层/座位" width="120">
               <template slot-scope="{row}">
                 {{ row.floorNumber }}楼{{ row.seatNumber }}号
@@ -48,44 +53,51 @@
             <el-table-column label="状态" width="120">
               <template slot-scope="{row}">
                 <el-tag :type="getStatusTagType(row.status)" size="small">
-                  {{ getStatusText(row.status) }}
+                  {{ getReservationStatusText(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="180" v-if="activeReservation">
+            <el-table-column label="操作" width="180">
               <template slot-scope="{row}">
-                <el-button
-                  size="mini"
-                  type="success"
-                  @click="handleCheckIn()"
-                  v-if="row.status === 'reserved'"
-                >
-                  签到
-                </el-button>
-                <el-button
-                  size="mini"
-                  type="danger"
-                  @click="handleCancelReservation()"
-                  v-if="row.status === 'reserved'"
-                >
-                  取消预约
-                </el-button>
-                <el-button
-                  size="mini"
-                  type="warning"
-                  @click="handleCheckOut()"
-                  v-if="row.status === 'checked_in' || row.status === 'occupied'"
-                >
-                  退座
-                </el-button>
+                <div>
+                  <!-- 调试信息 -->
+                  <div style="font-size: 11px; color: #999; margin-bottom: 5px;">
+                    状态值: {{row.status}} ({{typeof row.status}})
+                  </div>
+
+                  <!-- 已预约状态显示签到和取消按钮 -->
+                  <template v-if="isReservedStatus(row.status)">
+                    <el-button
+                      size="mini"
+                      type="primary"
+                      @click="handleCheckIn()"
+                    >
+                      签到
+                    </el-button>
+                    <el-button
+                      size="mini"
+                      type="danger"
+                      @click="handleCancelReservation()"
+                    >
+                      取消预约
+                    </el-button>
+                  </template>
+
+                  <!-- 已签到状态显示退座按钮 -->
+                  <template v-if="isCheckedInStatus(row.status)">
+                    <el-button
+                      size="mini"
+                      type="warning"
+                      @click="handleCheckOut()"
+                    >
+                      退座
+                    </el-button>
+                  </template>
+                </div>
               </template>
             </el-table-column>
           </el-table>
-
-          <div v-if="!activeReservation && !loading" class="empty-tip">
-            <i class="el-icon-info"></i> 当前没有进行中的预约
-          </div>
         </el-card>
       </div>
     </div>
@@ -95,8 +107,8 @@
 <script>
 import request from "@/utils/request";
 import { mapState, mapActions } from 'vuex';
-import { getStatusText, getStatusTagType } from '@/utils/seatUtils';
 import { formatDateTime } from '@/utils/dateUtils';
+import { RESERVATION_STATUS, getReservationStatusText, getReservationStatusTagType } from '@/utils/reservationUtils';
 
 export default {
   name: 'HomeView',
@@ -108,7 +120,8 @@ export default {
       user: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : {},
       admin: localStorage.getItem("admin") ? JSON.parse(localStorage.getItem("admin")) : {},
       baseURL: process.env.VUE_APP_BASE_API,
-      loading: false
+      loading: false,
+      refreshTimer: null
     };
   },
   computed: {
@@ -117,6 +130,17 @@ export default {
   mounted() {
     this.findNotice();
     this.fetchCurrentReservation();
+
+    // 设置定时刷新 - 每30秒刷新一次预约状态
+    this.refreshTimer = setInterval(() => {
+      this.refreshData();
+    }, 30000);
+  },
+  beforeDestroy() {
+    // 组件销毁前清除定时器
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+    }
   },
   methods: {
     ...mapActions('seat', [
@@ -137,34 +161,130 @@ export default {
     },
     // 格式化预约信息用于表格显示
     formatReservation(reservation) {
-      if (!reservation) return {};
+      console.log('正在格式化预约信息:', reservation);
+
+      // 检查是否为有效的预约对象
+      if (!reservation || typeof reservation !== 'object' || Array.isArray(reservation)) {
+        console.log('无效的预约信息，返回空对象');
+        return {
+          status: 0, // 设置为可预约状态
+          _originalStatus: null
+        };
+      }
+
+      // 检查是否包含必要字段
+      if (!reservation.reservationId && !reservation.id) {
+        console.log('预约信息缺少必要的ID字段，返回空对象');
+        return {
+          status: 0, // 设置为可预约状态
+          _originalStatus: reservation.status
+        };
+      }
+
+      // 确保处理所有可能的字段名称
+      const reservationId = reservation.reservationId || reservation.id;
+      const floorNumber = reservation.floorNumber || reservation.floor_number || reservation.roomId || reservation.room_id;
+      const seatNumber = reservation.seatNumber || reservation.seat_number || reservation.number;
+      const startTimeStr = reservation.startTime || reservation.start_time;
+      const endTimeStr = reservation.endTime || reservation.end_time;
+
+      // 必要字段检查
+      if (!floorNumber || !seatNumber) {
+        console.log('预约信息缺少必要的座位信息字段');
+        return {
+          id: reservationId,
+          status: 0, // 设置为可预约状态
+          _originalStatus: reservation.status
+        };
+      }
+
+      // 处理不同格式的状态 - 统一转为数字类型
+      let status;
+      if (typeof reservation.status === 'number') {
+        // 数字类型，直接使用
+        status = reservation.status;
+      } else if (typeof reservation.status === 'string' && !isNaN(parseInt(reservation.status))) {
+        // 数字字符串，转为数字
+        status = parseInt(reservation.status);
+      } else if (typeof reservation.status === 'string') {
+        // 字符串类型，转换为对应的数字
+        switch(reservation.status.toLowerCase()) {
+          case 'reserved': status = 1; break;
+          case 'checked_in':
+          case 'occupied': status = 2; break;
+          case 'timeout': status = 3; break;
+          case 'cancelled':
+          case 'canceled': status = 4; break;
+          case 'completed': status = 5; break;
+          default: status = 0;
+        }
+      } else {
+        // 未定义或其他情况，默认为0 (可预约)
+        status = 0;
+      }
+
+      console.log('状态转换结果:', {
+        originalStatus: reservation.status,
+        convertedStatus: status
+      });
 
       // 提取日期和时间范围
-      let startTime = reservation.startTime ? new Date(reservation.startTime) : null;
-      let endTime = reservation.endTime ? new Date(reservation.endTime) : null;
+      let startTime = startTimeStr ? new Date(startTimeStr) : null;
+      let endTime = endTimeStr ? new Date(endTimeStr) : null;
 
-      return {
-        id: reservation.reservationId,
-        floorNumber: reservation.floorNumber,
-        seatNumber: reservation.seatNumber,
-        date: startTime ? formatDateTime(startTime, 'yyyy-MM-dd') : '未知日期',
-        timeRange: (startTime && endTime)
-          ? `${formatDateTime(startTime, 'HH:mm')} - ${formatDateTime(endTime, 'HH:mm')}`
-          : '未知时间段',
-        status: reservation.status
+      // 格式化日期和时间
+      const formattedDate = startTime ? formatDateTime(startTime, 'yyyy-MM-dd') : '未知日期';
+      const formattedTimeRange = (startTime && endTime)
+        ? `${formatDateTime(startTime, 'HH:mm')} - ${formatDateTime(endTime, 'HH:mm')}`
+        : '未知时间段';
+
+      const result = {
+        id: reservationId,
+        floorNumber,
+        seatNumber,
+        date: formattedDate,
+        timeRange: formattedTimeRange,
+        status,
+        // 为调试目的添加原始状态
+        _originalStatus: reservation.status
       };
+
+      console.log('格式化后的结果:', result);
+      return result;
+    },
+    // 刷新数据
+    refreshData() {
+      console.log('定时刷新数据...');
+      this.loading = true;
+
+      // 刷新预约信息
+      this.fetchCurrentReservation().finally(() => {
+        this.loading = false;
+      });
     },
     // 签到
     async handleCheckIn() {
       try {
+        this.loading = true;
         const result = await this.checkIn();
+        this.loading = false;
+
         if (result.success) {
           this.$message.success('签到成功');
-          this.fetchCurrentReservation();
+
+          // 强制刷新预约信息
+          await this.fetchCurrentReservation();
+
+          // 如果页面状态没有正确更新，可以强制刷新数据
+          setTimeout(() => {
+            console.log('再次刷新预约信息');
+            this.fetchCurrentReservation();
+          }, 1000);
         } else {
           this.$message.error(result.message || '签到失败');
         }
       } catch (error) {
+        this.loading = false;
         console.error('签到失败:', error);
         this.$message.error('签到失败，请重试');
       }
@@ -177,7 +297,10 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(async () => {
+          this.loading = true;
           const result = await this.cancelReservation();
+          this.loading = false;
+
           if (result.success) {
             this.$message.success('预约已取消');
             this.fetchCurrentReservation();
@@ -186,6 +309,7 @@ export default {
           }
         }).catch(() => {});
       } catch (error) {
+        this.loading = false;
         console.error('取消预约失败:', error);
         this.$message.error('取消预约失败，请重试');
       }
@@ -198,7 +322,10 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(async () => {
+          this.loading = true;
           const result = await this.checkOut();
+          this.loading = false;
+
           if (result.success) {
             this.$message.success('已退座');
             this.fetchCurrentReservation();
@@ -207,13 +334,40 @@ export default {
           }
         }).catch(() => {});
       } catch (error) {
+        this.loading = false;
         console.error('退座失败:', error);
         this.$message.error('退座失败，请重试');
       }
     },
-    // 导出工具函数
-    getStatusText,
-    getStatusTagType
+    // 获取预约状态的显示文本
+    getReservationStatusText(status) {
+      return getReservationStatusText(status);
+    },
+    // 获取状态标签类型
+    getStatusTagType(status) {
+      return getReservationStatusTagType(status);
+    },
+    // 检查是否是"已预约"状态
+    isReservedStatus(status) {
+      // 简化逻辑：只检查是否等于1（预约中）
+      if (typeof status === 'number') return status === RESERVATION_STATUS.RESERVED;
+      if (typeof status === 'string') {
+        if (status === 'reserved') return true;
+        if (!isNaN(parseInt(status))) return parseInt(status) === RESERVATION_STATUS.RESERVED;
+      }
+      return false;
+    },
+
+    // 检查是否是"已签到/使用中"状态
+    isCheckedInStatus(status) {
+      // 简化逻辑：只检查是否等于2（已占用）
+      if (typeof status === 'number') return status === RESERVATION_STATUS.CHECKED_IN;
+      if (typeof status === 'string') {
+        if (['checked_in', 'occupied'].includes(status)) return true;
+        if (!isNaN(parseInt(status))) return parseInt(status) === RESERVATION_STATUS.CHECKED_IN;
+      }
+      return false;
+    },
   }
 }
 </script>

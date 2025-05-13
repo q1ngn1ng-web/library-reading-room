@@ -14,7 +14,7 @@
 
     <!-- 当前活跃预约提示 -->
     <el-alert
-      v-if="activeReservation && activeReservation.floorNumber && activeReservation.seatNumber"
+      v-if="isValidReservation(activeReservation)"
       type="info"
       :closable="false"
       show-icon
@@ -27,9 +27,9 @@
         </el-button>
         <el-button
           size="mini"
-          type="success"
+          type="primary"
           @click="checkInCurrentReservation"
-          v-if="activeReservation.status === 'reserved'"
+          v-if="activeReservation.status === 'reserved' || activeReservation.status === 1"
           style="margin-left: 10px;"
         >
           签到
@@ -38,7 +38,7 @@
           size="mini"
           type="warning"
           @click="checkOutCurrentReservation"
-          v-if="activeReservation.status === 'checked_in'"
+          v-if="activeReservation.status === 'checked_in' || activeReservation.status === 2"
           style="margin-left: 10px;"
         >
           退座
@@ -182,8 +182,9 @@
 
 <script>
 import { mapState, mapGetters, mapActions } from 'vuex'
-import { getStatusText, getStatusTagType, getSeatClass, isSeatAvailable } from '@/utils/seatUtils'
+import { getStatusText, getStatusTagType, getSeatClass, isSeatAvailable, SEAT_STATUS } from '@/utils/seatUtils'
 import { combineDateTime, validateTimeRange, formatDateTime, getCurrentDateString } from '@/utils/dateUtils'
+import { RESERVATION_STATUS, getReservationStatusText, getReservationStatusTagType } from '@/utils/reservationUtils'
 
 export default {
   name: 'SeatReservation',
@@ -315,11 +316,19 @@ export default {
       this.submitting = true
       try {
         // 构建预约数据 - 使用驼峰命名法匹配后端实体类字段
+        const startTime = combineDateTime(this.reservationForm.date, this.reservationForm.startTime);
+        const endTime = combineDateTime(this.reservationForm.date, this.reservationForm.endTime);
+
+        // 计算最晚签到时间（预约开始时间后30分钟）
+        const startDateTime = new Date(startTime);
+        const timeoutAt = new Date(startDateTime.getTime() + 30 * 60 * 1000);
+
         const reservationData = {
           userId: this.currentUser.id, // 确保用户ID正确传递
           seatId: this.reservationForm.seatId,
-          startTime: combineDateTime(this.reservationForm.date, this.reservationForm.startTime),
-          endTime: combineDateTime(this.reservationForm.date, this.reservationForm.endTime),
+          startTime: startTime,
+          endTime: endTime,
+          timeout_at: timeoutAt.toISOString(), // 添加最晚签到时间
           status: 0,  // 预约状态，可能需要根据后端定义设置
           // 以下字段可能不是必需的，但保留以便后端处理
           floorNumber: this.currentFloor,
@@ -408,6 +417,16 @@ export default {
         console.error('退座失败:', error)
         this.$message.error('退座失败，请重试')
       }
+    },
+
+    // 检查预约是否有效
+    isValidReservation(reservation) {
+      return reservation &&
+        typeof reservation === 'object' &&
+        !Array.isArray(reservation) &&
+        reservation.floorNumber &&
+        reservation.seatNumber &&
+        (reservation.reservationId || reservation.id);
     },
 
     // 导出工具函数供模板使用

@@ -4,8 +4,10 @@
 export const SEAT_STATUS = {
   AVAILABLE: 0,    // 可预约
   RESERVED: 1,     // 已预约
-  OCCUPIED: 2,     // 使用中
-  MAINTENANCE: 3   // 维护中/禁用
+  OCCUPIED: 2,     // 使用中/已签到
+  TIMEOUT: 3,      // 已超时
+  CANCELED: 4,     // 已取消
+  COMPLETED: 5     // 已完成
 };
 
 /**
@@ -15,17 +17,21 @@ export const STATUS_TEXT_MAP = {
   [SEAT_STATUS.AVAILABLE]: '可预约',
   [SEAT_STATUS.RESERVED]: '已预约',
   [SEAT_STATUS.OCCUPIED]: '使用中',
-  [SEAT_STATUS.MAINTENANCE]: '维护中'
+  [SEAT_STATUS.TIMEOUT]: '已超时',
+  [SEAT_STATUS.CANCELED]: '已取消',
+  [SEAT_STATUS.COMPLETED]: '已完成'
 };
 
 /**
  * 座位状态对应的Element UI标签类型
  */
 export const STATUS_TAG_TYPE_MAP = {
-  [SEAT_STATUS.AVAILABLE]: 'success',
-  [SEAT_STATUS.RESERVED]: 'warning',
-  [SEAT_STATUS.OCCUPIED]: 'primary',
-  [SEAT_STATUS.MAINTENANCE]: 'danger'
+  [SEAT_STATUS.AVAILABLE]: 'info',
+  [SEAT_STATUS.RESERVED]: 'primary',
+  [SEAT_STATUS.OCCUPIED]: 'success',
+  [SEAT_STATUS.TIMEOUT]: 'warning',
+  [SEAT_STATUS.CANCELED]: 'danger',
+  [SEAT_STATUS.COMPLETED]: 'info'
 };
 
 /**
@@ -35,7 +41,9 @@ export const SEAT_CLASS_MAP = {
   [SEAT_STATUS.AVAILABLE]: 'seat-available',
   [SEAT_STATUS.RESERVED]: 'seat-reserved',
   [SEAT_STATUS.OCCUPIED]: 'seat-occupied',
-  [SEAT_STATUS.MAINTENANCE]: 'seat-maintenance'
+  [SEAT_STATUS.TIMEOUT]: 'seat-timeout',
+  [SEAT_STATUS.CANCELED]: 'seat-canceled',
+  [SEAT_STATUS.COMPLETED]: 'seat-completed'
 };
 
 /**

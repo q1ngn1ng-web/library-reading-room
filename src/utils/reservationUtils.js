@@ -2,30 +2,36 @@
  * 预约状态常量
  */
 export const RESERVATION_STATUS = {
-  SUCCESS: 1,   // 预约成功
-  FAILED: 2,    // 预约失败
-  TIMEOUT: 3,   // 预约超时
-  CANCELLED: 4  // 预约取消
+  AVAILABLE: 0,  // 可预约/无预约
+  RESERVED: 1,   // 预约成功/预约中
+  CHECKED_IN: 2, // 已签到/使用中
+  TIMEOUT: 3,    // 预约超时
+  CANCELLED: 4,  // 预约取消
+  COMPLETED: 5   // 已完成
 };
 
 /**
  * 预约状态对应的显示文本
  */
 export const RESERVATION_STATUS_TEXT = {
-  [RESERVATION_STATUS.SUCCESS]: '预约成功',
-  [RESERVATION_STATUS.FAILED]: '预约失败',
-  [RESERVATION_STATUS.TIMEOUT]: '预约超时',
-  [RESERVATION_STATUS.CANCELLED]: '已取消'
+  [RESERVATION_STATUS.AVAILABLE]: '可预约',
+  [RESERVATION_STATUS.RESERVED]: '预约中',
+  [RESERVATION_STATUS.CHECKED_IN]: '已签到',
+  [RESERVATION_STATUS.TIMEOUT]: '已超时',
+  [RESERVATION_STATUS.CANCELLED]: '已取消',
+  [RESERVATION_STATUS.COMPLETED]: '已完成'
 };
 
 /**
  * 预约状态对应的标签类型
  */
 export const RESERVATION_STATUS_TAG_TYPE = {
-  [RESERVATION_STATUS.SUCCESS]: 'success',
-  [RESERVATION_STATUS.FAILED]: 'danger',
+  [RESERVATION_STATUS.AVAILABLE]: 'info',
+  [RESERVATION_STATUS.RESERVED]: 'primary',
+  [RESERVATION_STATUS.CHECKED_IN]: 'success',
   [RESERVATION_STATUS.TIMEOUT]: 'warning',
-  [RESERVATION_STATUS.CANCELLED]: 'info'
+  [RESERVATION_STATUS.CANCELLED]: 'danger',
+  [RESERVATION_STATUS.COMPLETED]: 'info'
 };
 
 /**
@@ -52,7 +58,7 @@ export function getReservationStatusTagType(status) {
  * @returns {boolean} 是否有效
  */
 export function isReservationValid(reservation) {
-  return reservation && reservation.status === RESERVATION_STATUS.SUCCESS;
+  return reservation && reservation.status === RESERVATION_STATUS.RESERVED;
 }
 
 /**
@@ -71,4 +77,21 @@ export function isReservationCancelled(reservation) {
  */
 export function isReservationTimedOut(reservation) {
   return reservation && reservation.status === RESERVATION_STATUS.TIMEOUT;
+}
+
+/**
+ * 获取预约状态对应的标签类型
+ * @param {number} status - 预约状态
+ * @returns {string} 标签类型
+ */
+export function getReservationTagType(status) {
+  switch (status) {
+    case RESERVATION_STATUS.AVAILABLE: return 'info';
+    case RESERVATION_STATUS.RESERVED: return 'primary';
+    case RESERVATION_STATUS.CHECKED_IN: return 'success';
+    case RESERVATION_STATUS.TIMEOUT: return 'warning';
+    case RESERVATION_STATUS.CANCELLED: return 'danger';
+    case RESERVATION_STATUS.COMPLETED: return 'info';
+    default: return 'info';
+  }
 }

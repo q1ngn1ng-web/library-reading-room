@@ -45,12 +45,16 @@ export function reserveSeat(data) {
 }
 
 // 取消预约
-export function cancelReservation(reservationId) {
+export function cancelReservation(reservationId, reason = 'user_cancel') {
   return request({
     url: '/reservations/cancel',
     method: 'post',
     role: 'user',
-    params: { reservationId }
+    params: {
+      reservationId,
+      reason,
+      status: 4  // 取消状态为4
+    }
   })
 }
 
@@ -76,6 +80,14 @@ export function checkOut(reservationId) {
 
 // 获取当前预约
 export function getCurrentReservation(userId) {
+  // 如果没有提供userId，尝试从本地存储获取
+  if (!userId) {
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    userId = currentUser.id;
+  }
+
+  console.log('获取当前预约API - 用户ID:', userId);
+
   return request({
     url: '/reservations/current',
     method: 'get',
