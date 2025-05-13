@@ -59,7 +59,22 @@ export function cancelReservation(reservationId, reason = 'user_cancel') {
 }
 
 // 签到
-export function checkIn(reservationId) {
+export function checkIn(reservationId, checkInData = null) {
+  // 如果有传入checkInData，使用post和data，否则使用简化的签到
+  if (checkInData) {
+    return request({
+      url: '/reservations/checkIn',
+      method: 'post',
+      role: 'user',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      params: { reservationId },
+      data: checkInData
+    })
+  }
+
+  // 兼容原有调用方式
   return request({
     url: '/reservations/checkIn',
     method: 'post',

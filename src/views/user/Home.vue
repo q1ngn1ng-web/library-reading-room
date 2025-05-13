@@ -44,9 +44,15 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="使用时段">
+            <el-table-column label="日期" width="120">
               <template slot-scope="{row}">
-                {{ row.date }} {{ row.timeRange }}
+                {{ row.dateOnly }}
+              </template>
+            </el-table-column>
+
+            <el-table-column label="时间段">
+              <template slot-scope="{row}">
+                {{ row.timeRange }}
               </template>
             </el-table-column>
 
@@ -172,6 +178,45 @@ export default {
         };
       }
 
+      // 检查是否存在嵌套结构（reservation和seat对象）
+      let reservationData = reservation;
+      let seatData = {};
+
+      if (reservation.reservation && typeof reservation.reservation === 'object') {
+        console.log('检测到嵌套的预约数据结构');
+        reservationData = reservation.reservation;
+        seatData = reservation.seat || {};
+
+        // 构建扁平化的结构
+        const flatReservation = {
+          // 预约信息
+          id: reservationData.id,
+          reservationId: reservationData.id,
+          userId: reservationData.userId,
+          seatId: reservationData.seatId,
+          status: reservationData.status,
+          startTime: reservationData.startTime,
+          endTime: reservationData.endTime,
+          realStartTime: reservationData.realStartTime,
+          realEndTime: reservationData.realEndTime,
+          timeout_at: reservationData.timeoutAt,
+
+          // 座位信息
+          floorNumber: seatData.roomId,
+          seatNumber: seatData.number,
+
+          // 保留原始数据
+          _originalData: reservation
+        };
+
+        return this.formatFlatReservation(flatReservation);
+      }
+
+      // 如果已经是扁平结构，直接处理
+      return this.formatFlatReservation(reservation);
+    },
+    // 处理扁平化的预约数据结构
+    formatFlatReservation(reservation) {
       // 检查是否包含必要字段
       if (!reservation.reservationId && !reservation.id) {
         console.log('预约信息缺少必要的ID字段，返回空对象');
@@ -187,6 +232,7 @@ export default {
       const seatNumber = reservation.seatNumber || reservation.seat_number || reservation.number;
       const startTimeStr = reservation.startTime || reservation.start_time;
       const endTimeStr = reservation.endTime || reservation.end_time;
+      const realStartTimeStr = reservation.realStartTime || reservation.real_start_time;
 
       // 必要字段检查
       if (!floorNumber || !seatNumber) {
@@ -231,19 +277,29 @@ export default {
       // 提取日期和时间范围
       let startTime = startTimeStr ? new Date(startTimeStr) : null;
       let endTime = endTimeStr ? new Date(endTimeStr) : null;
+      let realStartTime = realStartTimeStr ? new Date(realStartTimeStr) : null;
 
-      // 格式化日期和时间
+      // 如果有实际开始时间，优先使用
+      if (realStartTime && status === 2) {
+        startTime = realStartTime;
+      }
+
+      // 格式化日期和时间 - 确保只显示日期或只显示时间
       const formattedDate = startTime ? formatDateTime(startTime, 'yyyy-MM-dd') : '未知日期';
-      const formattedTimeRange = (startTime && endTime)
-        ? `${formatDateTime(startTime, 'HH:mm')} - ${formatDateTime(endTime, 'HH:mm')}`
-        : '未知时间段';
+
+      // 仅提取时间部分
+      const formattedStartTime = startTime ? formatDateTime(startTime, 'HH:mm') : '未知';
+      const formattedEndTime = endTime ? formatDateTime(endTime, 'HH:mm') : '未知';
+      const formattedTimeRange = `${formattedStartTime} - ${formattedEndTime}`;
 
       const result = {
         id: reservationId,
         floorNumber,
         seatNumber,
-        date: formattedDate,
-        timeRange: formattedTimeRange,
+        dateOnly: formattedDate,       // 仅日期
+        timeRange: formattedTimeRange, // 仅时间
+        startTime: startTime,
+        endTime: endTime,
         status,
         // 为调试目的添加原始状态
         _originalStatus: reservation.status

@@ -21,7 +21,19 @@
       style="margin-bottom: 20px;"
     >
       <template slot="title">
-        您当前有一个预约: {{activeReservation.floorNumber}}楼 {{activeReservation.seatNumber}}号座位
+        您当前有一个预约:
+        {{
+          (activeReservation.floorNumber ||
+          activeReservation.seat?.roomId ||
+          '未知')
+        }}楼
+        {{
+          (activeReservation.seatNumber ||
+          activeReservation.seat?.number ||
+          '未知')
+        }}号座位
+        <div class="reservation-date-info">{{ reservationDateInfo }}</div>
+        <div class="reservation-time-info">{{ reservationTimeInfo }}</div>
         <el-button size="mini" type="danger" @click="cancelCurrentReservation" style="margin-left: 10px;">
           取消预约
         </el-button>
@@ -29,7 +41,7 @@
           size="mini"
           type="primary"
           @click="checkInCurrentReservation"
-          v-if="activeReservation.status === 'reserved' || activeReservation.status === 1"
+          v-if="showCheckInButton"
           style="margin-left: 10px;"
         >
           签到
@@ -38,7 +50,7 @@
           size="mini"
           type="warning"
           @click="checkOutCurrentReservation"
-          v-if="activeReservation.status === 'checked_in' || activeReservation.status === 2"
+          v-if="showCheckOutButton"
           style="margin-left: 10px;"
         >
           退座
@@ -138,11 +150,7 @@
         <el-form-item label="时间段" required>
           <el-time-select
             v-model="reservationForm.startTime"
-            :picker-options="{
-              start: '08:00',
-              step: '00:30',
-              end: '22:00'
-            }"
+            :picker-options="startTimeOptions"
             placeholder="开始时间"
             style="width: 45%;"
           ></el-time-select>
@@ -200,7 +208,7 @@ export default {
         seatId: '',
         roomId: '',
         number: '',
-        date: getCurrentDateString(),
+        date: '',  // 初始化为空，将在created钩子中设置
         startTime: '',
         endTime: '',
         remark: ''
@@ -230,12 +238,139 @@ export default {
       const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
       console.log('当前用户信息:', userInfo)
       return userInfo
+    },
+
+    // 格式化预约时间信息
+    reservationTimeInfo() {
+      if (!this.activeReservation) return '';
+
+      // 检查是否是嵌套结构
+      let reservation = this.activeReservation;
+      if (this.activeReservation.reservation && typeof this.activeReservation.reservation === 'object') {
+        reservation = {
+          ...this.activeReservation.reservation,
+          floorNumber: this.activeReservation.seat?.roomId,
+          seatNumber: this.activeReservation.seat?.number
+        };
+      }
+
+      // 获取开始结束时间
+      const startTimeStr = reservation.startTime || reservation.start_time;
+      const endTimeStr = reservation.endTime || reservation.end_time;
+      const realStartTimeStr = reservation.realStartTime || reservation.real_start_time;
+
+      let startTime = startTimeStr ? new Date(startTimeStr) : null;
+      let endTime = endTimeStr ? new Date(endTimeStr) : null;
+      let realStartTime = realStartTimeStr ? new Date(realStartTimeStr) : null;
+
+      // 如果已签到，显示实际开始时间
+      if ((reservation.status === 'checked_in' || reservation.status === 2) && realStartTime) {
+        const formattedDate = formatDateTime(realStartTime, 'yyyy-MM-dd');
+        const formattedStartTime = formatDateTime(realStartTime, 'HH:mm');
+        const formattedEndTime = endTime ? formatDateTime(endTime, 'HH:mm') : '未知';
+        // 显示日期和时间在不同的行
+        return `签到时间: ${formattedStartTime} - ${formattedEndTime}`;
+      } else {
+        // 否则显示预约时间
+        const formattedStartTime = startTime ? formatDateTime(startTime, 'HH:mm') : '未知';
+        const formattedEndTime = endTime ? formatDateTime(endTime, 'HH:mm') : '未知';
+        return `预约时间: ${formattedStartTime} - ${formattedEndTime}`;
+      }
+    },
+
+    // 获取预约日期信息
+    reservationDateInfo() {
+      if (!this.activeReservation) return '';
+
+      // 检查是否是嵌套结构
+      let reservation = this.activeReservation;
+      if (this.activeReservation.reservation && typeof this.activeReservation.reservation === 'object') {
+        reservation = this.activeReservation.reservation;
+      }
+
+      // 获取日期
+      const startTimeStr = reservation.startTime || reservation.start_time;
+      const realStartTimeStr = reservation.realStartTime || reservation.real_start_time;
+
+      // 如果已签到，优先显示签到日期
+      if ((reservation.status === 'checked_in' || reservation.status === 2) && realStartTimeStr) {
+        const realStartTime = new Date(realStartTimeStr);
+        return `日期: ${formatDateTime(realStartTime, 'yyyy-MM-dd')}`;
+      } else if (startTimeStr) {
+        const startTime = new Date(startTimeStr);
+        return `日期: ${formatDateTime(startTime, 'yyyy-MM-dd')}`;
+      }
+
+      return '日期: 未知';
+    },
+
+    // 开始时间选择器配置
+    startTimeOptions() {
+      // 获取当前时间
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      // 选择当前时间后最近的30分钟时间点作为最早可选时间
+      let minHour = currentHour;
+      let minMinute = currentMinute >= 30 ? 30 : 0;
+
+      // 如果当前时间已经超过本小时的30分钟点，进入下一小时
+      if (currentMinute > 30) {
+        minHour += 1;
+        minMinute = 0;
+      }
+
+      // 格式化为"HH:mm"格式，确保小于10的数字前面有0
+      const minTime = `${minHour < 10 ? '0' + minHour : minHour}:${minMinute === 0 ? '00' : minMinute}`;
+
+      // 判断是否为今天预约
+      const isToday = this.reservationForm.date === this.getCurrentDateString();
+
+      // 如果是今天预约，使用当前时间后最近的30分钟点作为最早可选时间
+      // 如果是明天预约，允许从8点开始选择
+      return {
+        start: isToday ? minTime : '08:00',
+        step: '00:30',
+        end: '22:00'
+      };
+    },
+
+    // 是否显示签到按钮
+    showCheckInButton() {
+      if (!this.activeReservation) return false;
+
+      // 嵌套结构
+      if (this.activeReservation.reservation) {
+        const status = this.activeReservation.reservation.status;
+        return status === 'reserved' || status === 1;
+      }
+
+      // 扁平结构
+      return this.activeReservation.status === 'reserved' || this.activeReservation.status === 1;
+    },
+
+    // 是否显示退座按钮
+    showCheckOutButton() {
+      if (!this.activeReservation) return false;
+
+      // 嵌套结构
+      if (this.activeReservation.reservation) {
+        const status = this.activeReservation.reservation.status;
+        return status === 'checked_in' || status === 2;
+      }
+
+      // 扁平结构
+      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 2;
     }
   },
   // 初始化座位数据
   async created() {
     this.loading = true
     try {
+      // 设置默认预约日期为今天
+      this.reservationForm.date = this.getCurrentDateString();
+
       // 初始化楼层
       await this.initializeFloor(this.currentFloor || 1)
       // 获取座位信息
@@ -291,7 +426,7 @@ export default {
         seatId: seat.id,
         roomId: seat.roomId || seat.room_id,
         seatNumber: seat.seatNumber || seat.number,
-        date: getCurrentDateString(),
+        date: this.getCurrentDateString(),
         startTime: '',
         endTime: '',
         remark: ''
@@ -299,18 +434,32 @@ export default {
 
       // 显示预约对话框
       this.showReservationDialog = true
+
+      // 监听日期变化，当日期改变时重置开始时间
+      this.$watch('reservationForm.date', (newDate) => {
+        // 重置开始和结束时间
+        this.reservationForm.startTime = '';
+        this.reservationForm.endTime = '';
+      });
     },
 
     // 提交预约
     async submitReservation() {
       if (!this.reservationForm.startTime || !this.reservationForm.endTime) {
-        this.$message.warning('请选择预约时间段')
-        return
+        this.$message.warning('请选择预约时间段');
+        return;
+      }
+
+      // 验证所选时间是否在当前时间之后
+      const isValid = this.validateReservationTime();
+      if (!isValid) {
+        this.$message.warning('预约时间必须在当前时间之后');
+        return;
       }
 
       if (!this.currentUser || !this.currentUser.id) {
-        this.$message.error('用户信息不完整，请重新登录')
-        return
+        this.$message.error('用户信息不完整，请重新登录');
+        return;
       }
 
       this.submitting = true
@@ -354,6 +503,20 @@ export default {
       } finally {
         this.submitting = false
       }
+    },
+
+    // 验证预约时间是否在当前时间之后
+    validateReservationTime() {
+      const now = new Date();
+      const reservationDate = new Date(this.reservationForm.date);
+      const [hours, minutes] = this.reservationForm.startTime.split(':').map(Number);
+
+      reservationDate.setHours(hours, minutes, 0, 0);
+
+      // 预约时间必须至少在当前时间5分钟之后
+      const minReservationTime = new Date(now.getTime() + 5 * 60 * 1000);
+
+      return reservationDate > minReservationTime;
     },
 
     // 取消当前预约
@@ -421,11 +584,26 @@ export default {
 
     // 检查预约是否有效
     isValidReservation(reservation) {
+      if (!reservation || typeof reservation !== 'object' || Array.isArray(reservation)) {
+        return false;
+      }
+
+      // 检查是否是嵌套结构
+      if (reservation.reservation && typeof reservation.reservation === 'object' && reservation.seat && typeof reservation.seat === 'object') {
+        const reservationData = reservation.reservation;
+        const seatData = reservation.seat;
+
+        return reservationData.id &&
+          seatData.roomId &&
+          seatData.number;
+      }
+
+      // 扁平结构检查
       return reservation &&
         typeof reservation === 'object' &&
         !Array.isArray(reservation) &&
-        reservation.floorNumber &&
-        reservation.seatNumber &&
+        (reservation.floorNumber || reservation.roomId) &&
+        (reservation.seatNumber || reservation.number) &&
         (reservation.reservationId || reservation.id);
     },
 
@@ -434,7 +612,16 @@ export default {
     getStatusTagType,
     getSeatClass,
     formatDateTime,
-    isSeatAvailable
+    isSeatAvailable,
+
+    // 获取当前日期字符串，格式为yyyy-MM-dd
+    getCurrentDateString() {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
   }
 }
 </script>
@@ -550,5 +737,18 @@ export default {
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+.reservation-date-info {
+  font-size: 14px;
+  margin: 5px 0;
+  color: #606266;
+  font-weight: bold;
+}
+
+.reservation-time-info {
+  font-size: 14px;
+  margin: 5px 0;
+  color: #606266;
 }
 </style>

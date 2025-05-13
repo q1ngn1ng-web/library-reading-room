@@ -270,7 +270,23 @@ const actions = {
     }
 
     try {
-      const response = await checkIn(state.activeReservation.reservationId)
+      // 获取当前时间
+      const currentTime = new Date();
+
+      // 设置timeout_at为当前时间30分钟后
+      const timeoutAt = new Date(currentTime.getTime() + 30 * 60 * 1000);
+
+      // 构建签到数据，传递新的开始时间
+      const checkInData = {
+        reservationId: state.activeReservation.reservationId,
+        startTime: currentTime.toISOString(),
+        timeout_at: timeoutAt.toISOString()
+      };
+
+      console.log('签到数据:', checkInData);
+
+      // 调用签到API
+      const response = await checkIn(state.activeReservation.reservationId, checkInData)
       if (response.code === '0') {
         console.log('签到成功，原状态:', state.activeReservation.status)
 
@@ -278,7 +294,9 @@ const actions = {
         const updatedReservation = {
           ...state.activeReservation,
           status: 2,  // 使用数字2表示"已占用"状态
-          realStartTime: new Date().toISOString()
+          startTime: currentTime.toISOString(),  // 更新为当前签到时间
+          realStartTime: currentTime.toISOString(),
+          timeout_at: timeoutAt.toISOString()    // 更新超时时间
         }
 
         console.log('更新后的预约状态:', updatedReservation.status)
@@ -298,7 +316,10 @@ const actions = {
             commit('UPDATE_SEAT', {
               floorNumber: updatedReservation.floorNumber,
               seatNumber: updatedReservation.seatNumber,
-              updates: { status: 2 } // 使用相同的状态值2表示"已占用"
+              updates: {
+                status: 2, // 使用相同的状态值2表示"已占用"
+                startTime: currentTime.toISOString()  // 更新开始时间
+              }
             })
             console.log('已更新座位状态为"已占用"')
           }
@@ -415,71 +436,113 @@ const actions = {
           // 打印详细的预约数据，便于调试
           console.log('服务器返回的预约数据详情:', JSON.stringify(response.data, null, 2))
 
-          // 检查是否包含必要字段
-          if (!response.data.reservationId && !response.data.id) {
-            console.log('返回的预约数据缺少必要字段，视为无预约');
-            commit('SET_ACTIVE_RESERVATION', null);
-            localStorage.removeItem('activeReservation');
-            return null;
-          }
+          // 处理嵌套的数据结构
+          const responseData = response.data;
+          let processedReservation = {};
 
-          // 处理后端返回的数据，确保包含必要的字段并统一状态表示
-          const reservation = {
-            ...response.data,
-            // 如果后端返回的字段名称与前端不一致，进行转换
-            reservationId: response.data.reservationId || response.data.id,
-            floorNumber: response.data.floorNumber || response.data.floor_number || response.data.roomId || response.data.room_id,
-            seatNumber: response.data.seatNumber || response.data.seat_number || response.data.number,
-            startTime: response.data.startTime || response.data.start_time,
-            endTime: response.data.endTime || response.data.end_time,
+          // 检查是否有嵌套的reservation对象
+          if (responseData.reservation) {
+            // 使用嵌套的reservation对象
+            const reservationData = responseData.reservation;
+            const seatData = responseData.seat || {};
+
+            // 检查是否包含必要字段
+            if (!reservationData.id) {
+              console.log('返回的预约数据缺少必要字段，视为无预约');
+              commit('SET_ACTIVE_RESERVATION', null);
+              localStorage.removeItem('activeReservation');
+              return null;
+            }
+
+            // 从嵌套结构中提取数据
+            processedReservation = {
+              // 基本预约信息 - 从reservation对象获取
+              reservationId: reservationData.id,
+              userId: reservationData.userId,
+              seatId: reservationData.seatId,
+              startTime: reservationData.startTime,
+              endTime: reservationData.endTime,
+              realStartTime: reservationData.realStartTime,
+              realEndTime: reservationData.realEndTime,
+              timeout_at: reservationData.timeoutAt,
+              status: reservationData.status,
+
+              // 座位信息 - 从seat对象获取
+              floorNumber: seatData.roomId,
+              seatNumber: seatData.number,
+
+              // 保留原始数据以备后用
+              _originalData: responseData
+            };
+          } else {
+            // 处理非嵌套数据（兼容旧格式）
+            // 检查是否包含必要字段
+            if (!responseData.reservationId && !responseData.id) {
+              console.log('返回的预约数据缺少必要字段，视为无预约');
+              commit('SET_ACTIVE_RESERVATION', null);
+              localStorage.removeItem('activeReservation');
+              return null;
+            }
+
+            // 处理后端返回的数据，确保包含必要的字段并统一状态表示
+            processedReservation = {
+              ...responseData,
+              // 如果后端返回的字段名称与前端不一致，进行转换
+              reservationId: responseData.reservationId || responseData.id,
+              floorNumber: responseData.floorNumber || responseData.floor_number || responseData.roomId || responseData.room_id,
+              seatNumber: responseData.seatNumber || responseData.seat_number || responseData.number,
+              startTime: responseData.startTime || responseData.start_time,
+              endTime: responseData.endTime || responseData.end_time,
+            };
           }
 
           // 统一处理状态字段，将其转换为数字格式
-          if (typeof response.data.status === 'number') {
-            reservation.status = response.data.status;
-          } else if (typeof response.data.status === 'string' && !isNaN(parseInt(response.data.status))) {
-            reservation.status = parseInt(response.data.status);
-          } else if (typeof response.data.status === 'string') {
+          if (typeof processedReservation.status === 'number') {
+            // 数字类型，不需要处理
+          } else if (typeof processedReservation.status === 'string' && !isNaN(parseInt(processedReservation.status))) {
+            // 数字字符串，转为数字
+            processedReservation.status = parseInt(processedReservation.status);
+          } else if (typeof processedReservation.status === 'string') {
             // 字符串状态转换为数字
-            switch(response.data.status.toLowerCase()) {
-              case 'reserved': reservation.status = 1; break;
+            switch(processedReservation.status.toLowerCase()) {
+              case 'reserved': processedReservation.status = 1; break;
               case 'checked_in':
-              case 'occupied': reservation.status = 2; break;
-              case 'timeout': reservation.status = 3; break;
+              case 'occupied': processedReservation.status = 2; break;
+              case 'timeout': processedReservation.status = 3; break;
               case 'cancelled':
-              case 'canceled': reservation.status = 4; break;
-              case 'completed': reservation.status = 5; break;
-              default: reservation.status = 0; // 默认为可预约状态
+              case 'canceled': processedReservation.status = 4; break;
+              case 'completed': processedReservation.status = 5; break;
+              default: processedReservation.status = 0; // 默认为可预约状态
             }
           } else {
             // 如果没有状态值，根据上下文判断
             // 注意：如果是从后端获取的活跃预约，默认应该是"预约中"状态
             // 如果后端返回了数据但没有status字段，我们假设它是一个有效预约
-            reservation.status = 1;
+            processedReservation.status = 1;
           }
 
-          console.log('处理后的预约数据:', reservation);
+          console.log('处理后的预约数据:', processedReservation);
 
           // 更新座位状态以匹配预约状态
-          if (reservation.floorNumber && reservation.seatNumber) {
+          if (processedReservation.floorNumber && processedReservation.seatNumber) {
             // 确保获取该楼层的座位数据
-            if (!state.floors[reservation.floorNumber]) {
-              await dispatch('fetchFloorSeats', reservation.floorNumber);
+            if (!state.floors[processedReservation.floorNumber]) {
+              await dispatch('fetchFloorSeats', processedReservation.floorNumber);
             }
 
             // 更新座位状态
-            if (state.floors[reservation.floorNumber]) {
+            if (state.floors[processedReservation.floorNumber]) {
               commit('UPDATE_SEAT', {
-                floorNumber: reservation.floorNumber,
-                seatNumber: reservation.seatNumber,
-                updates: { status: reservation.status }
+                floorNumber: processedReservation.floorNumber,
+                seatNumber: processedReservation.seatNumber,
+                updates: { status: processedReservation.status }
               });
-              console.log(`已同步座位状态为: ${reservation.status}`);
+              console.log(`已同步座位状态为: ${processedReservation.status}`);
             }
           }
 
-          commit('SET_ACTIVE_RESERVATION', reservation);
-          return reservation;
+          commit('SET_ACTIVE_RESERVATION', processedReservation);
+          return processedReservation;
         } else {
           // 服务器返回无效数据或字符串消息
           console.log('服务器未返回有效的预约数据:', response.data);
