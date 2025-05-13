@@ -11,7 +11,7 @@ const state = {
 
 const mutations = {
   SET_CHAT_ROOMS(state, rooms) {
-    console.log('准备处理聊天室数据, 数量:', rooms.length);
+    // console.log('准备处理聊天室数据, 数量:', rooms.length);
 
     // 确保属性名称和值类型正确映射
     state.chatRooms = rooms.map(room => {
@@ -57,7 +57,7 @@ const mutations = {
     if (room) {
       state.currentRoom = {
         ...room,
-        status: room.is_available // 为兼容旧代码保留status字段
+        status: room.isAvailable // 为兼容旧代码保留status字段
       }
     } else {
       state.currentRoom = null

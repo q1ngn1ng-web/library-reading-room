@@ -45,11 +45,11 @@ const mutations = {
     // 保存到本地存储，确保页面刷新后还能获取到预约信息
     if (reservation) {
       // 检查是否有访问聊天室的权限（status=1表示已预约，status=2表示已签到）
-      const hasValidStatus = reservation.status === 1 || reservation.status === 2;
+      const hasValidStatus = reservation.status === 1 || reservation.status === 5;
 
       // 检查嵌套结构中的status字段
       const nestedStatus = reservation.reservation?.status;
-      const hasValidNestedStatus = nestedStatus === 1 || nestedStatus === 2;
+      const hasValidNestedStatus = nestedStatus === 1 || nestedStatus === 5;
 
       // 设置聊天室访问权限
       state.chatAvailable = hasValidStatus || hasValidNestedStatus;

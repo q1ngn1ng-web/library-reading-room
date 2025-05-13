@@ -97,7 +97,7 @@
           <el-input-number v-model="roomForm.maxUser" :min="5" :max="100" controls-position="right"></el-input-number>
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="roomForm.is_available" active-text="开放" inactive-text="关闭"></el-switch>
+          <el-switch v-model="roomForm.isAvailable" active-text="开放" inactive-text="关闭"></el-switch>
         </el-form-item>
         <el-form-item label="允许发言">
           <el-switch v-model="roomForm.is_chat" active-text="允许" inactive-text="禁言"></el-switch>
@@ -257,13 +257,7 @@ export default {
       // 首先检查对应的camelCase字段
       const availabilityValue = room.isAvailable !== undefined ? room.isAvailable : room.is_available;
 
-      // 打印调试信息
-      // console.log(`聊天室 ${room.id} 可用性检查:`, {
-      //   isAvailable字段: room.isAvailable,
-      //   is_available字段: room.is_available,
-      //   使用值: availabilityValue,
-      //   类型: typeof availabilityValue
-      // });
+
 
       // 处理不同类型的值，确保正确解释
       if (typeof availabilityValue === 'string') {

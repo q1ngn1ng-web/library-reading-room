@@ -15,7 +15,7 @@
     </el-alert>
 
     <el-alert
-      v-if="currentRoom && !currentRoom.is_chat"
+      v-if="currentRoom && !currentRoom.isChat"
       title="当前聊天室已禁言"
       type="warning"
       description="管理员已开启禁言模式，暂时无法发送消息。"
@@ -42,8 +42,8 @@
     <el-card class="room-info-card">
       <div slot="header" class="room-header">
         <h3 v-if="currentRoom">{{ currentRoom.floor }}楼 | {{ currentRoom.category }}</h3>
-        <el-tag :type="currentRoom && currentRoom.is_available ? 'success' : 'danger'" size="small">
-          {{ currentRoom && currentRoom.is_available ? '开放' : '关闭' }}
+        <el-tag :type="currentRoom && currentRoom.isAvailable ? 'success' : 'danger'" size="small">
+          {{ currentRoom && currentRoom.isAvailable ? '开放' : '关闭' }}
         </el-tag>
       </div>
       <div class="user-count">
@@ -55,9 +55,9 @@
       <el-aside width="200px" class="user-list-aside">
         <div class="user-list-header">在线用户</div>
         <div class="user-list">
-          <div v-for="user in onlineUsers" :key="user.name" class="user-item">
+          <div v-for="user in onlineUsers" :key="user.username" class="user-item">
             <el-avatar :size="32" :src="user.avatar || defaultAvatar"></el-avatar>
-            <span class="user-name">{{ user.name }}</span>
+            <span class="user-name">{{ user.username }}</span>
           </div>
           <div v-if="onlineUsers.length === 0" class="no-users">
             暂无在线用户
@@ -92,12 +92,12 @@
               type="textarea"
               :rows="3"
               placeholder="请输入消息"
-              :disabled="!currentRoom || !currentRoom.is_available || !currentRoom.is_chat"
+              :disabled="!currentRoom || !currentRoom.isAvailable || !currentRoom.isChat"
               @keyup.ctrl.enter.native="sendMessage"
             ></el-input>
             <el-button
               type="primary"
-              :disabled="!messageContent.trim() || !currentRoom || !currentRoom.is_available || !currentRoom.is_chat"
+              :disabled="!messageContent.trim() || !currentRoom || !currentRoom.isAvailable || !currentRoom.isChat"
               @click="sendMessage"
             >
               发送
@@ -136,7 +136,7 @@ export default {
       'getMessages',
       'getOnlineUsers'
     ]),
-    ...mapGetters('seat', ['canAccessChat']), // 使用新的getter
+    ...mapGetters('seat', ['canAccessChat', 'getActiveReservation']), // 添加活跃预约getter
     currentRoom() {
       return this.getCurrentRoom
     },
@@ -157,13 +157,28 @@ export default {
       'updateOnlineUsers',
       'clearCurrentRoomData'
     ]),
+    // 添加调试方法，用于检查聊天室状态
+    // logRoomState() {
+    //   if (this.currentRoom) {
+    //     console.log('聊天室状态详情:', {
+    //       id: this.currentRoom.id,
+    //       isAvailable: this.currentRoom.isAvailable,
+    //       is_available: this.currentRoom.is_available,
+    //       isChat: this.currentRoom.isChat,
+    //       is_chat: this.currentRoom.is_chat,
+    //       可发送消息: (this.currentRoom.isAvailable && this.currentRoom.isChat),
+    //       检查条件1: (this.currentRoom.isAvailable && this.currentRoom.isChat),
+    //       检查条件2: (this.currentRoom.is_available && this.currentRoom.is_chat)
+    //     });
+    //   }
+    // },
     handleWebSocketError(errorMsg) {
       this.connectionError = true;
       this.$message.error(errorMsg || 'WebSocket连接失败，请刷新页面重试');
     },
     sendMessage() {
       if (this.messageContent.trim() && this.wsService && this.currentRoom &&
-          this.currentRoom.is_available && this.currentRoom.is_chat) {
+          this.currentRoom.isAvailable && this.currentRoom.isChat) {
         const success = this.wsService.sendMessage(this.messageContent, this.isAnonymous)
         if (success) {
           this.messageContent = ''
@@ -211,7 +226,7 @@ export default {
       }
 
       this.user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!this.user || !this.user.name) {
+      if (!this.user || !this.user.username) {
         this.$message.error('用户信息不完整，请重新登录');
         this.$router.push('/login');
         return;
@@ -226,10 +241,19 @@ export default {
       this.connectionError = false;
       this.isConnected = false;
 
+      // 获取当前预约的座位信息
+      const activeReservation = this.getActiveReservation;
+      let displayName = this.user.username;
+
+      // 如果有活跃预约，添加座位前缀
+      if (activeReservation && activeReservation.floorNumber && activeReservation.seatNumber) {
+        displayName = `${activeReservation.floorNumber}层${activeReservation.seatNumber}号 ${this.user.username}`;
+      }
+
       this.wsService = new WebSocketService(
         this.roomId,
         userId,
-        this.user.name,
+        displayName, // 使用带有座位前缀的用户名
         this.user.avatar || '',
         this.handleMessage,
         this.handleUserList
@@ -260,6 +284,11 @@ export default {
           this.$router.push('/chat-rooms')
           return false
         }
+
+        // 添加调试输出
+        console.log('聊天室数据加载完成:', this.currentRoom);
+        // this.logRoomState();
+
         return true
       } catch (error) {
         console.error('加载聊天室信息失败:', error)
@@ -279,6 +308,18 @@ export default {
         return false
       }
       return true
+    }
+  },
+  watch: {
+    // 监听currentRoom数据变化
+    currentRoom: {
+      handler(newRoom) {
+        if (newRoom) {
+          console.log('聊天室数据已更新:');
+          // this.logRoomState();
+        }
+      },
+      deep: true
     }
   },
   async created() {
