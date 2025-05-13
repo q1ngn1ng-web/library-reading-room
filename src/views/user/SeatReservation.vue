@@ -236,7 +236,7 @@ export default {
     // 获取当前用户信息
     currentUser() {
       const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
-      console.log('当前用户信息:', userInfo)
+
       return userInfo
     },
 
@@ -403,7 +403,7 @@ export default {
 
     // 处理座位点击
     handleSeatClick(seat) {
-      console.log('点击座位:', seat)
+
       this.selectedSeat = seat
 
       // 显示座位详情对话框
@@ -485,7 +485,7 @@ export default {
           remark: this.reservationForm.remark
         }
 
-        console.log('发送预约数据:', reservationData)
+
 
         // 提交预约
         const result = await this.reserveSeat(reservationData)

@@ -32,7 +32,7 @@ export function getFloors() {
 // 创建预约
 export function reserveSeat(data) {
   // 确保data包含userId、seatId等必要字段
-  console.log('API 发送预约数据:', data)
+  // console.log('API 发送预约数据:', data)
   return request({
     url: '/reservations/reserve',
     method: 'post',
@@ -100,8 +100,6 @@ export function getCurrentReservation(userId) {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     userId = currentUser.id;
   }
-
-  console.log('获取当前预约API - 用户ID:', userId);
 
   return request({
     url: '/reservations/current',

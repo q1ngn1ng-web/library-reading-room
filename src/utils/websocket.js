@@ -129,7 +129,6 @@ class WebSocketService {
 
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
       setTimeout(() => this.connect(), this.reconnectTimeout);
     } else {
       console.error('WebSocket重连失败，已达到最大重试次数');
@@ -163,7 +162,7 @@ class WebSocketService {
         isAnonymous: isAnonymous,
         userId: this.userId
       };
-      console.log('Sending message with userId:', this.userId);
+
       this.ws.send(JSON.stringify(message));
       return true;
     }

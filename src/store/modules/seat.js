@@ -9,7 +9,8 @@ const state = {
   totalFloors: 5,
   activeReservation: null,
   pastReservations: [],
-  timeoutChecker: null
+  timeoutChecker: null,
+  chatAvailable: false,
 }
 
 const mutations = {
@@ -43,8 +44,25 @@ const mutations = {
     state.activeReservation = reservation
     // 保存到本地存储，确保页面刷新后还能获取到预约信息
     if (reservation) {
+      // 检查是否有访问聊天室的权限（status=1表示已预约，status=2表示已签到）
+      const hasValidStatus = reservation.status === 1 || reservation.status === 2;
+
+      // 检查嵌套结构中的status字段
+      const nestedStatus = reservation.reservation?.status;
+      const hasValidNestedStatus = nestedStatus === 1 || nestedStatus === 2;
+
+      // 设置聊天室访问权限
+      state.chatAvailable = hasValidStatus || hasValidNestedStatus;
+
+      console.log('更新预约信息和聊天室权限:', {
+        状态: reservation.status,
+        嵌套状态: nestedStatus,
+        可访问聊天室: state.chatAvailable
+      });
+
       localStorage.setItem('activeReservation', JSON.stringify(reservation))
     } else {
+      state.chatAvailable = false;
       localStorage.removeItem('activeReservation')
     }
   },
@@ -96,7 +114,7 @@ const actions = {
   async fetchFloorSeats({ commit }, floorNumber) {
     try {
       const response = await getSeatStatus(floorNumber)
-      console.log('获取到的座位状态:', response)
+      // console.log('获取到的座位状态:', response)
 
       // 检查响应结构
       if (response.code === '0' && response.data) {
@@ -106,7 +124,7 @@ const actions = {
           floorNumber,
           seats: seats
         })
-        console.log('更新楼层座位状态成功(标准格式):', seats)
+        // console.log('更新楼层座位状态成功(标准格式):', seats)
         return seats
       } else if (Array.isArray(response)) {
         // 数组格式（后端直接返回数组）
@@ -115,7 +133,7 @@ const actions = {
           floorNumber,
           seats: seats
         })
-        console.log('更新楼层座位状态成功(数组格式):', seats)
+        // console.log('更新楼层座位状态成功(数组格式):', seats)
         return seats
       } else {
         console.warn('座位数据格式不符合预期:', response)
@@ -170,7 +188,7 @@ const actions = {
             seatNumber: activeReservation.seatNumber,
             updates: { status: 1 } // 使用状态值1表示"预约中"
           })
-          console.log('已更新座位状态为"预约中"')
+          // console.log('已更新座位状态为"预约中"')
         }
 
         // 从后端获取最新的座位状态
@@ -223,7 +241,7 @@ const actions = {
               seatNumber: state.activeReservation.seatNumber,
               updates: { status: 0 } // 使用状态值0表示"可预约"
             })
-            console.log('已更新座位状态为"可预约"')
+            // console.log('已更新座位状态为"可预约"')
           }
         }
 
@@ -283,12 +301,12 @@ const actions = {
         timeout_at: timeoutAt.toISOString()
       };
 
-      console.log('签到数据:', checkInData);
+      // console.log('签到数据:', checkInData);
 
       // 调用签到API
       const response = await checkIn(state.activeReservation.reservationId, checkInData)
       if (response.code === '0') {
-        console.log('签到成功，原状态:', state.activeReservation.status)
+        // console.log('签到成功，原状态:', state.activeReservation.status)
 
         // 更新活跃预约状态 - 使用数字2表示"已占用"状态
         const updatedReservation = {
@@ -299,7 +317,7 @@ const actions = {
           timeout_at: timeoutAt.toISOString()    // 更新超时时间
         }
 
-        console.log('更新后的预约状态:', updatedReservation.status)
+        // console.log('更新后的预约状态:', updatedReservation.status)
         commit('SET_ACTIVE_RESERVATION', updatedReservation)
 
         // 立即刷新本地存储以确保状态持久化
@@ -321,7 +339,7 @@ const actions = {
                 startTime: currentTime.toISOString()  // 更新开始时间
               }
             })
-            console.log('已更新座位状态为"已占用"')
+            // console.log('已更新座位状态为"已占用"')
           }
         }
 
@@ -424,17 +442,17 @@ const actions = {
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
       const userId = currentUser.id
 
-      console.log('获取当前预约 - 用户ID:', userId)
+      // console.log('获取当前预约 - 用户ID:', userId)
 
       // 从服务器获取最新状态
       const response = await getCurrentReservation(userId)
-      console.log('从服务器获取的预约信息:', response)
+      // console.log('从服务器获取的预约信息:', response)
 
       if (response.code === '0') {
         // 先检查是否有有效的数据对象
         if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
           // 打印详细的预约数据，便于调试
-          console.log('服务器返回的预约数据详情:', JSON.stringify(response.data, null, 2))
+          // console.log('服务器返回的预约数据详情:', JSON.stringify(response.data, null, 2))
 
           // 处理嵌套的数据结构
           const responseData = response.data;
@@ -448,7 +466,7 @@ const actions = {
 
             // 检查是否包含必要字段
             if (!reservationData.id) {
-              console.log('返回的预约数据缺少必要字段，视为无预约');
+              // console.log('返回的预约数据缺少必要字段，视为无预约');
               commit('SET_ACTIVE_RESERVATION', null);
               localStorage.removeItem('activeReservation');
               return null;
@@ -478,7 +496,7 @@ const actions = {
             // 处理非嵌套数据（兼容旧格式）
             // 检查是否包含必要字段
             if (!responseData.reservationId && !responseData.id) {
-              console.log('返回的预约数据缺少必要字段，视为无预约');
+              // console.log('返回的预约数据缺少必要字段，视为无预约');
               commit('SET_ACTIVE_RESERVATION', null);
               localStorage.removeItem('activeReservation');
               return null;
@@ -521,7 +539,7 @@ const actions = {
             processedReservation.status = 1;
           }
 
-          console.log('处理后的预约数据:', processedReservation);
+          // console.log('处理后的预约数据:', processedReservation);
 
           // 更新座位状态以匹配预约状态
           if (processedReservation.floorNumber && processedReservation.seatNumber) {
@@ -545,7 +563,7 @@ const actions = {
           return processedReservation;
         } else {
           // 服务器返回无效数据或字符串消息
-          console.log('服务器未返回有效的预约数据:', response.data);
+          // console.log('服务器未返回有效的预约数据:', response.data);
           commit('SET_ACTIVE_RESERVATION', null);
           localStorage.removeItem('activeReservation');
         }
@@ -634,7 +652,7 @@ const actions = {
             // 调用后端检查接口
             const response = await checkTimeout(state.activeReservation.reservationId);
             if (response.code === '0' && response.data && response.data.isTimeout) {
-              console.log('后端返回超时状态，更新预约:', response.data);
+              // console.log('后端返回超时状态，更新预约:', response.data);
 
               // 根据后端返回更新预约状态
               commit('ADD_PAST_RESERVATION', {
@@ -679,9 +697,24 @@ const getters = {
     return state.floors[state.currentFloor] || []
   },
 
+  // 获取当前活跃预约
+  getActiveReservation: state => state.activeReservation,
+
   // 判断用户是否有活跃预约
   hasActiveReservation: state => {
-    return !!state.activeReservation
+    // 判断是否可以访问聊天室，不仅仅检查预约存在性，还要检查预约状态
+    if (!state.activeReservation) return false;
+
+    // 检查主状态
+    const mainStatus = state.activeReservation.status;
+    const isValidMain = mainStatus === 1 || mainStatus === 2;
+
+    // 检查嵌套预约状态（如果存在）
+    const nestedStatus = state.activeReservation.reservation?.status;
+    const isValidNested = nestedStatus === 1 || nestedStatus === 2;
+
+    // 返回状态检查结果
+    return isValidMain || isValidNested;
   },
 
   // 获取用户当前占用的座位
@@ -710,7 +743,12 @@ const getters = {
       seat => seat.seatNumber === seatNumber &&
              seat.status === SEAT_STATUS.RESERVED
     )
-  }
+  },
+
+  // 是否可访问聊天室（新增getter）
+  canAccessChat: state => {
+    return state.chatAvailable || false;
+  },
 }
 
 export default {

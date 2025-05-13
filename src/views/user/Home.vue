@@ -167,11 +167,11 @@ export default {
     },
     // 格式化预约信息用于表格显示
     formatReservation(reservation) {
-      console.log('正在格式化预约信息:', reservation);
+
 
       // 检查是否为有效的预约对象
       if (!reservation || typeof reservation !== 'object' || Array.isArray(reservation)) {
-        console.log('无效的预约信息，返回空对象');
+
         return {
           status: 0, // 设置为可预约状态
           _originalStatus: null
@@ -183,7 +183,6 @@ export default {
       let seatData = {};
 
       if (reservation.reservation && typeof reservation.reservation === 'object') {
-        console.log('检测到嵌套的预约数据结构');
         reservationData = reservation.reservation;
         seatData = reservation.seat || {};
 
@@ -219,7 +218,6 @@ export default {
     formatFlatReservation(reservation) {
       // 检查是否包含必要字段
       if (!reservation.reservationId && !reservation.id) {
-        console.log('预约信息缺少必要的ID字段，返回空对象');
         return {
           status: 0, // 设置为可预约状态
           _originalStatus: reservation.status
@@ -236,7 +234,6 @@ export default {
 
       // 必要字段检查
       if (!floorNumber || !seatNumber) {
-        console.log('预约信息缺少必要的座位信息字段');
         return {
           id: reservationId,
           status: 0, // 设置为可预约状态
@@ -305,12 +302,10 @@ export default {
         _originalStatus: reservation.status
       };
 
-      console.log('格式化后的结果:', result);
       return result;
     },
     // 刷新数据
     refreshData() {
-      console.log('定时刷新数据...');
       this.loading = true;
 
       // 刷新预约信息
@@ -333,7 +328,6 @@ export default {
 
           // 如果页面状态没有正确更新，可以强制刷新数据
           setTimeout(() => {
-            console.log('再次刷新预约信息');
             this.fetchCurrentReservation();
           }, 1000);
         } else {

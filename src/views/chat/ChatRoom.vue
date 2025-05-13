@@ -1,10 +1,10 @@
 <template>
   <div class="chat-room">
     <el-alert
-      v-if="!hasActiveReservation"
-      title="您需要先预约座位才能使用聊天室"
+      v-if="!canAccessChat && !isAdmin"
+      title="您需要有预约或已签到的座位才能使用聊天室"
       type="warning"
-      description="请前往座位预约页面预约座位。"
+      description="请前往座位预约页面预约座位，或完成已有预约的签到。"
       show-icon
       :closable="false"
       style="margin-bottom: 15px;"
@@ -128,7 +128,6 @@ export default {
       showDebugInfo: true,
       connectionError: false, // 添加连接错误状态
       reconnectTimer: null, // 用于管理重连定时器
-      hasActiveReservation: false // 添加有效预约状态
     }
   },
   computed: {
@@ -137,6 +136,7 @@ export default {
       'getMessages',
       'getOnlineUsers'
     ]),
+    ...mapGetters('seat', ['canAccessChat']), // 使用新的getter
     currentRoom() {
       return this.getCurrentRoom
     },
@@ -145,6 +145,9 @@ export default {
     },
     onlineUsers() {
       return this.getOnlineUsers
+    },
+    isAdmin() {
+      return !!localStorage.getItem('admin-token')
     }
   },
   methods: {
@@ -216,7 +219,6 @@ export default {
 
       // 确保我们得到用户ID
       const userId = this.user.id;
-      console.log('User info from localStorage:', this.user);
       if (!userId) {
         console.warn('用户ID不存在，可能会导致数据库中user_id为0');
       }
@@ -265,21 +267,18 @@ export default {
         return false
       }
     },
-    // 检查是否有活跃预约
-    checkActiveReservation() {
-      const activeReservation = localStorage.getItem('activeReservation')
-      this.hasActiveReservation = !!activeReservation
-
-      // 如果没有活跃预约，可以选择自动跳转到座位预约页面
-      if (!this.hasActiveReservation) {
-        console.warn('用户没有活跃的预约，无法使用聊天室')
-      }
-
-      return this.hasActiveReservation
-    },
     // 跳转到座位预约页面
     goToSeatReservation() {
       this.$router.push('/seat-reservation')
+    },
+    // 检查用户是否可以进入聊天室
+    checkAccess() {
+      if (!this.canAccessChat && !this.isAdmin) {
+        this.$message.warning('您需要有预约或已签到的座位才能使用聊天室')
+        this.$router.push('/chat')
+        return false
+      }
+      return true
     }
   },
   async created() {
@@ -290,7 +289,7 @@ export default {
     }
 
     // 检查是否有活跃预约
-    if (!this.checkActiveReservation()) {
+    if (!this.checkAccess()) {
       // 如果没有预约，仍然加载聊天室信息，但不连接WebSocket
       await this.loadRoomData()
       return

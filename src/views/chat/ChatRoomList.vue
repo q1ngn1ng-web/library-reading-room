@@ -15,11 +15,11 @@
     </div>
 
     <!-- 添加预约提示信息 -->
-    <div v-if="!hasActiveReservation && !isAdmin" class="reservation-alert">
+    <div v-if="!canAccessChat && !isAdmin" class="reservation-alert">
       <el-alert
-        title="您需要先预约座位才能使用聊天室"
+        title="您需要有预约或已签到的座位才能使用聊天室"
         type="warning"
-        description="请前往座位预约页面预约一个座位。"
+        description="请前往座位预约页面预约一个座位，或完成已有预约的签到。"
         show-icon
         :closable="false"
       >
@@ -42,8 +42,9 @@
     <div class="room-header">
       <h3 class="room-title">{{ room.floor }}楼 | {{ room.category }}</h3>
       <div class="room-status">
-        <el-tag :type="room.is_available ? 'success' : 'danger'" size="mini">
-          {{ room.is_available ? '开放' : '关闭' }}
+
+        <el-tag :type="isRoomAvailable(room) ? 'success' : 'danger'" size="mini">
+          {{ isRoomAvailable(room) ? '开放' : '关闭' }}
         </el-tag>
       </div>
     </div>
@@ -54,11 +55,17 @@
       <el-button
         type="primary"
         size="small"
-        :disabled="!room.is_available || room.currentUser >= room.maxUser || serverOffline || (!hasActiveReservation && !isAdmin)"
+        :disabled="!isRoomAvailable(room) || room.currentUser >= room.maxUser || serverOffline || (!canAccessChat && !isAdmin)"
         @click="enterRoom(room.id)"
       >
         进入聊天室
       </el-button>
+      <div style="font-size: 10px; color: #999; margin-top: 5px;" v-if="!isRoomAvailable(room) || room.currentUser >= room.maxUser || serverOffline || (!canAccessChat && !isAdmin)">
+        <span v-if="!isRoomAvailable(room)">聊天室已关闭</span>
+        <span v-else-if="room.currentUser >= room.maxUser">聊天室已满</span>
+        <span v-else-if="serverOffline">服务器离线</span>
+        <span v-else-if="!canAccessChat && !isAdmin">需要有预约或已签到的座位</span>
+      </div>
     </div>
   </el-card>
 </el-col>
@@ -127,11 +134,11 @@ export default {
       dragOffset: { x: 0, y: 0 },
       loading: false,
       serverOffline: false,
-      hasActiveReservation: false
     }
   },
   computed: {
     ...mapGetters('chat', ['getChatRooms']),
+    ...mapGetters('seat', ['canAccessChat']),
     chatRooms() {
       return this.getChatRooms
     },
@@ -141,13 +148,6 @@ export default {
   },
   methods: {
     ...mapActions('chat', ['fetchChatRooms', 'createChatRoom']),
-
-    // 检查是否有活跃预约
-    checkActiveReservation() {
-      const activeReservation = localStorage.getItem('activeReservation')
-      this.hasActiveReservation = !!activeReservation
-      return this.hasActiveReservation
-    },
 
     // 跳转到座位预约页面
     goToSeatReservation() {
@@ -179,10 +179,10 @@ export default {
         return
       }
 
-      // 非管理员需要预约才能进入聊天室
-      if (!this.isAdmin && !this.hasActiveReservation) {
-        this.$message.warning('您需要先预约座位才能进入聊天室')
-        this.$confirm('您需要先预约座位才能进入聊天室，是否前往预约?', '提示', {
+      // 非管理员需要预约或已签到才能进入聊天室
+      if (!this.isAdmin && !this.canAccessChat) {
+        this.$message.warning('您需要有预约或已签到的座位才能进入聊天室')
+        this.$confirm('您需要有预约或已签到的座位才能进入聊天室，是否前往预约?', '提示', {
           confirmButtonText: '去预约',
           cancelButtonText: '取消',
           type: 'warning'
@@ -250,12 +250,33 @@ export default {
       this.isDragging = false
       document.removeEventListener('mousemove', this.onDrag)
       document.removeEventListener('mouseup', this.stopDrag)
+    },
+
+    // 判断聊天室是否开放
+    isRoomAvailable(room) {
+      // 首先检查对应的camelCase字段
+      const availabilityValue = room.isAvailable !== undefined ? room.isAvailable : room.is_available;
+
+      // 打印调试信息
+      // console.log(`聊天室 ${room.id} 可用性检查:`, {
+      //   isAvailable字段: room.isAvailable,
+      //   is_available字段: room.is_available,
+      //   使用值: availabilityValue,
+      //   类型: typeof availabilityValue
+      // });
+
+      // 处理不同类型的值，确保正确解释
+      if (typeof availabilityValue === 'string') {
+        return availabilityValue === 'true' || availabilityValue === '1';
+      } else if (typeof availabilityValue === 'number') {
+        return availabilityValue === 1;
+      } else {
+        return !!availabilityValue;
+      }
     }
   },
   created() {
     this.loadChatRooms()
-    // 检查是否有活跃预约
-    this.checkActiveReservation()
   },
   beforeDestroy() {
     document.removeEventListener('mousemove', this.onDrag)

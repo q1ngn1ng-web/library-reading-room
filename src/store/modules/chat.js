@@ -11,11 +11,47 @@ const state = {
 
 const mutations = {
   SET_CHAT_ROOMS(state, rooms) {
-    // 添加兼容性处理
-    state.chatRooms = rooms.map(room => ({
-      ...room,
-      status: room.is_available // 为兼容旧代码保留status字段
-    }))
+    console.log('准备处理聊天室数据, 数量:', rooms.length);
+
+    // 确保属性名称和值类型正确映射
+    state.chatRooms = rooms.map(room => {
+      // 映射 camelCase 到 snake_case
+      const mappedRoom = {
+        ...room,
+        // 确保属性正确映射
+        is_available: room.isAvailable !== undefined ? room.isAvailable : room.is_available,
+        is_chat: room.isChat !== undefined ? room.isChat : room.is_chat,
+      };
+
+      // 检查字段值和转换
+      let isAvailable;
+
+      // 优先使用已映射的 is_available 字段
+      if (typeof mappedRoom.is_available === 'string') {
+        isAvailable = mappedRoom.is_available === 'true' || mappedRoom.is_available === '1';
+        console.log(`聊天室 ${room.id} is_available为字符串: "${mappedRoom.is_available}", 转换为:`, isAvailable);
+      }
+      // 如果是数字，1为true，0为false
+      else if (typeof mappedRoom.is_available === 'number') {
+        isAvailable = mappedRoom.is_available === 1;
+        console.log(`聊天室 ${room.id} is_available为数字: ${mappedRoom.is_available}, 转换为:`, isAvailable);
+      }
+      // 如果已经是布尔值，直接使用
+      else {
+        isAvailable = !!mappedRoom.is_available;
+        console.log(`聊天室 ${room.id} is_available为其他类型: ${mappedRoom.is_available}, 转换为:`, isAvailable);
+      }
+
+      return {
+        ...mappedRoom,
+        // 将is_available强制转换为布尔值
+        is_available: isAvailable,
+        // 为兼容旧代码保留status字段
+        status: isAvailable
+      };
+    });
+
+    console.log('处理后的聊天室数据:', state.chatRooms);
   },
   SET_CURRENT_ROOM(state, room) {
     if (room) {
@@ -43,7 +79,22 @@ const actions = {
   async fetchChatRooms({ commit }) {
     try {
       const res = await getChatRoomList()
+      console.log('API 返回的聊天室原始数据:', res);
+
       if (res.code === '0') {
+        console.log('聊天室数据详情:', JSON.stringify(res.data, null, 2));
+        // 打印第一个聊天室的详细信息，检查字段名
+        // if (res.data && res.data.length > 0) {
+        //   console.log('第一个聊天室数据:');
+        //   const firstRoom = res.data[0];
+        //   console.log('- ID:', firstRoom.id);
+        //   console.log('- isAvailable值:', firstRoom.isAvailable);
+        //   console.log('- isAvailable类型:', typeof firstRoom.isAvailable);
+        //   console.log('- is_available值:', firstRoom.is_available);
+        //   console.log('- is_available类型:', typeof firstRoom.is_available);
+        //   console.log('- 所有字段:', Object.keys(firstRoom));
+        // }
+
         commit('SET_CHAT_ROOMS', res.data)
         return res.data
       }
