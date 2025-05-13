@@ -253,7 +253,7 @@ export default {
       this.wsService = new WebSocketService(
         this.roomId,
         userId,
-        displayName, // 使用带有座位前缀的用户名
+        user, // 使用带有座位前缀的用户名
         this.user.avatar || '',
         this.handleMessage,
         this.handleUserList

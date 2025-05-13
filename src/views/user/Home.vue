@@ -254,7 +254,7 @@ export default {
         switch(reservation.status.toLowerCase()) {
           case 'reserved': status = 1; break;
           case 'checked_in':
-          case 'occupied': status = 2; break;
+          case 'occupied': status = 5; break; // 已占用状态转为签到完成状态
           case 'timeout': status = 3; break;
           case 'cancelled':
           case 'canceled': status = 4; break;
@@ -277,7 +277,7 @@ export default {
       let realStartTime = realStartTimeStr ? new Date(realStartTimeStr) : null;
 
       // 如果有实际开始时间，优先使用
-      if (realStartTime && status === 2) {
+      if (realStartTime && (status === 5 || status === RESERVATION_STATUS.COMPLETED)) {
         startTime = realStartTime;
       }
 
@@ -399,7 +399,7 @@ export default {
     },
     // 检查是否是"已预约"状态
     isReservedStatus(status) {
-      // 简化逻辑：只检查是否等于1（预约中）
+      // 检查是否等于1（预约成功）
       if (typeof status === 'number') return status === RESERVATION_STATUS.RESERVED;
       if (typeof status === 'string') {
         if (status === 'reserved') return true;
@@ -410,11 +410,11 @@ export default {
 
     // 检查是否是"已签到/使用中"状态
     isCheckedInStatus(status) {
-      // 简化逻辑：只检查是否等于2（已占用）
-      if (typeof status === 'number') return status === RESERVATION_STATUS.CHECKED_IN;
+      // 检查是否等于5（签到完成）
+      if (typeof status === 'number') return status === RESERVATION_STATUS.COMPLETED;
       if (typeof status === 'string') {
-        if (['checked_in', 'occupied'].includes(status)) return true;
-        if (!isNaN(parseInt(status))) return parseInt(status) === RESERVATION_STATUS.CHECKED_IN;
+        if (['completed', 'checked_in', 'occupied'].includes(status)) return true;
+        if (!isNaN(parseInt(status))) return parseInt(status) === RESERVATION_STATUS.COMPLETED;
       }
       return false;
     },

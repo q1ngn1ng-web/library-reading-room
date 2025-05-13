@@ -34,7 +34,13 @@
         }}号座位
         <div class="reservation-date-info">{{ reservationDateInfo }}</div>
         <div class="reservation-time-info">{{ reservationTimeInfo }}</div>
-        <el-button size="mini" type="danger" @click="cancelCurrentReservation" style="margin-left: 10px;">
+        <el-button
+          size="mini"
+          type="danger"
+          @click="cancelCurrentReservation"
+          v-if="showCancelButton"
+          style="margin-left: 10px;"
+        >
           取消预约
         </el-button>
         <el-button
@@ -357,11 +363,25 @@ export default {
       // 嵌套结构
       if (this.activeReservation.reservation) {
         const status = this.activeReservation.reservation.status;
-        return status === 'checked_in' || status === 2;
+        return status === 'checked_in' || status === 5;
       }
 
       // 扁平结构
-      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 2;
+      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 5;
+    },
+
+    // 是否显示取消按钮
+    showCancelButton() {
+      if (!this.activeReservation) return false;
+
+      // 嵌套结构
+      if (this.activeReservation.reservation) {
+        const status = this.activeReservation.reservation.status;
+        return status === 'reserved' || status === 1;
+      }
+
+      // 扁平结构
+      return this.activeReservation.status === 'reserved' || this.activeReservation.status === 1;
     }
   },
   // 初始化座位数据
@@ -403,7 +423,6 @@ export default {
 
     // 处理座位点击
     handleSeatClick(seat) {
-
       this.selectedSeat = seat
 
       // 显示座位详情对话框
@@ -484,8 +503,6 @@ export default {
           seatNumber: this.reservationForm.seatNumber,
           remark: this.reservationForm.remark
         }
-
-
 
         // 提交预约
         const result = await this.reserveSeat(reservationData)

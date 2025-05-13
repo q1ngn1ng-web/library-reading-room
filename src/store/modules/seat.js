@@ -44,7 +44,7 @@ const mutations = {
     state.activeReservation = reservation
     // 保存到本地存储，确保页面刷新后还能获取到预约信息
     if (reservation) {
-      // 检查是否有访问聊天室的权限（status=1表示已预约，status=2表示已签到）
+      // 检查是否有访问聊天室的权限（status=1表示预约成功，status=5表示签到完成）
       const hasValidStatus = reservation.status === 1 || reservation.status === 5;
 
       // 检查嵌套结构中的status字段
@@ -308,10 +308,10 @@ const actions = {
       if (response.code === '0') {
         // console.log('签到成功，原状态:', state.activeReservation.status)
 
-        // 更新活跃预约状态 - 使用数字2表示"已占用"状态
+        // 更新活跃预约状态 - 使用数字5表示"签到完成"状态
         const updatedReservation = {
           ...state.activeReservation,
-          status: 2,  // 使用数字2表示"已占用"状态
+          status: 5,  // 使用数字5表示"签到完成"状态
           startTime: currentTime.toISOString(),  // 更新为当前签到时间
           realStartTime: currentTime.toISOString(),
           timeout_at: timeoutAt.toISOString()    // 更新超时时间
@@ -335,7 +335,7 @@ const actions = {
               floorNumber: updatedReservation.floorNumber,
               seatNumber: updatedReservation.seatNumber,
               updates: {
-                status: 2, // 使用相同的状态值2表示"已占用"
+                status: 2, // 座位状态2仍表示"已占用"
                 startTime: currentTime.toISOString()  // 更新开始时间
               }
             })
@@ -404,7 +404,7 @@ const actions = {
         // 添加到历史预约
         commit('ADD_PAST_RESERVATION', {
           ...state.activeReservation,
-          status: 5, // 使用数字5表示"已完成"
+          status: 4, // 使用数字4表示"预约取消"
           realEndTime: new Date().toISOString()
         })
 
@@ -707,11 +707,11 @@ const getters = {
 
     // 检查主状态
     const mainStatus = state.activeReservation.status;
-    const isValidMain = mainStatus === 1 || mainStatus === 2;
+    const isValidMain = mainStatus === 1 || mainStatus === 5;
 
     // 检查嵌套预约状态（如果存在）
     const nestedStatus = state.activeReservation.reservation?.status;
-    const isValidNested = nestedStatus === 1 || nestedStatus === 2;
+    const isValidNested = nestedStatus === 1 || nestedStatus === 5;
 
     // 返回状态检查结果
     return isValidMain || isValidNested;
