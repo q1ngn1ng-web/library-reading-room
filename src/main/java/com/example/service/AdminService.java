@@ -111,6 +111,10 @@ public class AdminService {
         int userCount = userDao.findAll().size();
         dashboardData.put("userCount", userCount);
 
+        // 获取在线用户数
+        int onlineUsers = userDao.countCurrentOnlineUsers();
+        dashboardData.put("onlineUsers", onlineUsers);
+
         // 获取活跃聊天室数量
         int activeRooms = chatRoomDao.countActiveRooms();
         dashboardData.put("activeRooms", activeRooms);
@@ -138,7 +142,8 @@ public class AdminService {
             Map<String, Object> dayStat = new HashMap<>();
             dayStat.put("date", dateStr);
             dayStat.put("reservations", reservationDao.countByDate(dateStr));
-            dayStat.put("activeUsers", userDao.countActiveUsersByDate(dateStr));
+            // 不再使用按日期统计活跃用户
+            // dayStat.put("activeUsers", userDao.countActiveUsersByDate(dateStr));
 
             dailyStats.add(dayStat);
         }

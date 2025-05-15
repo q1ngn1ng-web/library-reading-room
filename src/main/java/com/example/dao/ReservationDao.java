@@ -21,10 +21,10 @@ public interface ReservationDao extends Mapper<Reservation> {
             "order by id desc limit 1")
     Reservation findCurrentByUserId(@Param("userId") Integer userId);
 
-    @Select("select * from reservation where user_id = #{userId} order by create_time desc")
+    @Select("select * from reservation where user_id = #{userId} order by start_time desc")
     List<Reservation> findHistoryByUserId(@Param("userId") Integer userId);
 
-    @Select("select * from reservation where user_id = #{userId} and status = #{status} order by create_time desc")
+    @Select("select * from reservation where user_id = #{userId} and status = #{status} order by start_time desc")
     List<Reservation> findHistoryByUserIdAndStatus(@Param("userId") Integer userId, @Param("status") Integer status);
 
     @Select("select * from reservation where status = 1 and timeout_at < #{now}")
@@ -64,6 +64,6 @@ public interface ReservationDao extends Mapper<Reservation> {
      * @param date 日期字符串，格式：yyyy-MM-dd
      * @return 当日预约数量
      */
-    @Select("select count(*) from reservation where DATE(create_time) = #{date}")
+    @Select("select count(*) from reservation where DATE(start_time) = #{date}")
     int countByDate(@Param("date") String date);
 }

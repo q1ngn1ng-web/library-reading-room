@@ -25,10 +25,10 @@ public class SeatController {
      */
     @GetMapping("/status")
     public Result getSeatsByRoom(@RequestParam("roomId") Integer roomId) {
-//        System.out.println("/seats/status,getSeatsByRoom:");
-//        log.info("获取座位状态请求，roomId: {}", roomId);
+        System.out.println("/seats/status,getSeatsByRoom:");
+        log.info("获取座位状态请求，roomId: {}", roomId);
         List<Seat> seats = seatService.getSeatsByRoom(roomId);
-//        log.info("找到 {} 个座位", seats.size());
+        log.info("找到 {} 个座位", seats.size());
         return Result.success(seats);
     }
 

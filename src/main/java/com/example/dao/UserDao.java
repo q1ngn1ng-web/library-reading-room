@@ -27,6 +27,14 @@ public interface UserDao extends Mapper<User> {
     List<User> findAll();
 
     /**
+     * 统计当前在线用户数 - 所有聊天室的currentUser总和
+     *
+     * @return 当前在线用户数
+     */
+    @Select("select COALESCE(SUM(currentUser), 0) from chat_room")
+    int countCurrentOnlineUsers();
+
+    /**
      * 统计指定日期活跃用户数
      *
      * @param date 日期字符串，格式：yyyy-MM-dd
