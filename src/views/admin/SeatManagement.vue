@@ -59,7 +59,7 @@
             class="seat"
             :class="getSeatClass(seat.status)"
             @click="handleSeatClick(seat)">
-            {{ seat.seatNumber }}
+            {{ seat.number }}
           </div>
         </div>
       </template>

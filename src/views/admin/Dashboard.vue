@@ -63,60 +63,77 @@
             </div>
 
             <!-- 数据统计卡片 -->
-            <el-row :gutter="20" v-else>
-              <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
-                  <div class="stat-card-content">
-                    <div class="stat-icon">
-                      <i class="el-icon-user"></i>
+            <div v-if="!loading">
+              <el-row :gutter="20">
+                <el-col :span="8">
+                  <el-card shadow="hover" class="stat-card">
+                    <div class="stat-card-content">
+                      <div class="stat-icon">
+                        <i class="el-icon-user"></i>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-title">用户总数</div>
+                        <div class="stat-value">{{ dashboardData.userCount }}</div>
+                      </div>
                     </div>
-                    <div class="stat-info">
-                      <div class="stat-title">用户总数</div>
-                      <div class="stat-value">{{ dashboardData.userCount }}</div>
+                  </el-card>
+                </el-col>
+                <el-col :span="8">
+                  <el-card shadow="hover" class="stat-card">
+                    <div class="stat-card-content">
+                      <div class="stat-icon">
+                        <i class="el-icon-user-solid"></i>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-title">当前在线用户</div>
+                        <div class="stat-value">{{ dashboardData.onlineUsers }}</div>
+                      </div>
                     </div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
-                  <div class="stat-card-content">
-                    <div class="stat-icon">
-                      <i class="el-icon-chat-dot-round"></i>
+                  </el-card>
+                </el-col>
+                <el-col :span="8">
+                  <el-card shadow="hover" class="stat-card">
+                    <div class="stat-card-content">
+                      <div class="stat-icon">
+                        <i class="el-icon-chat-dot-round"></i>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-title">活跃聊天室</div>
+                        <div class="stat-value">{{ dashboardData.activeRooms }}</div>
+                      </div>
                     </div>
-                    <div class="stat-info">
-                      <div class="stat-title">活跃聊天室</div>
-                      <div class="stat-value">{{ dashboardData.activeRooms }}</div>
+                  </el-card>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20" class="second-row" style="margin-top: 20px;">
+                <el-col :span="12">
+                  <el-card shadow="hover" class="stat-card">
+                    <div class="stat-card-content">
+                      <div class="stat-icon">
+                        <i class="el-icon-s-order"></i>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-title">总预约数</div>
+                        <div class="stat-value">{{ dashboardData.totalReservations }}</div>
+                      </div>
                     </div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
-                  <div class="stat-card-content">
-                    <div class="stat-icon">
-                      <i class="el-icon-s-order"></i>
+                  </el-card>
+                </el-col>
+                <el-col :span="12">
+                  <el-card shadow="hover" class="stat-card">
+                    <div class="stat-card-content">
+                      <div class="stat-icon">
+                        <i class="el-icon-time"></i>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-title">活跃预约</div>
+                        <div class="stat-value">{{ dashboardData.activeReservations }}</div>
+                      </div>
                     </div>
-                    <div class="stat-info">
-                      <div class="stat-title">总预约数</div>
-                      <div class="stat-value">{{ dashboardData.totalReservations }}</div>
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover" class="stat-card">
-                  <div class="stat-card-content">
-                    <div class="stat-icon">
-                      <i class="el-icon-time"></i>
-                    </div>
-                    <div class="stat-info">
-                      <div class="stat-title">活跃预约</div>
-                      <div class="stat-value">{{ dashboardData.activeReservations }}</div>
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-            </el-row>
+                  </el-card>
+                </el-col>
+              </el-row>
+            </div>
           </div>
 
           <!-- 用户管理页面 -->
@@ -163,6 +180,7 @@ export default {
       loading: true,
       dashboardData: {
         userCount: 0,
+        onlineUsers: 0,
         activeRooms: 0,
         totalReservations: 0,
         activeReservations: 0,
@@ -284,5 +302,8 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #303133;
+}
+.second-row {
+  margin-top: 20px;
 }
 </style>
