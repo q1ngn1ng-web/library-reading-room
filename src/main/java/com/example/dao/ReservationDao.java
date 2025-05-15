@@ -41,4 +41,29 @@ public interface ReservationDao extends Mapper<Reservation> {
 
     // Complex query defined in XML mapper
     List<Reservation> findBySearch(@Param("params") Params params);
+
+    /**
+     * 统计所有预约数量
+     *
+     * @return 预约总数
+     */
+    @Select("select count(*) from reservation")
+    int countAll();
+
+    /**
+     * 统计当前活跃预约数量（已预约和使用中的）
+     *
+     * @return 活跃预约数量
+     */
+    @Select("select count(*) from reservation where status in (1, 5)")
+    int countActiveReservations();
+
+    /**
+     * 统计指定日期的预约数量
+     *
+     * @param date 日期字符串，格式：yyyy-MM-dd
+     * @return 当日预约数量
+     */
+    @Select("select count(*) from reservation where DATE(create_time) = #{date}")
+    int countByDate(@Param("date") String date);
 }

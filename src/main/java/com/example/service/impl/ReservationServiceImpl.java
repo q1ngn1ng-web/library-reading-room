@@ -187,7 +187,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         // Update reservation status and set real end time
         Date now = new Date();
-        reservationDao.checkout(reservationId, ReservationStatus.SUCCESS.getCode(), now);
+        reservationDao.checkout(reservationId, ReservationStatus.COMPLETED.getCode(), now);
 
         // Fetch updated reservation
         reservation = reservationDao.selectByPrimaryKey(reservationId);

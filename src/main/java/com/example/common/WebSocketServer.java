@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * websocket服务
  */
-@ServerEndpoint(value = "/imserver/{roomId}/{username}/{avatar}")
+@ServerEndpoint(value = "/imserver/{roomId}/{userId}/{avatar}")
 @Component
 public class WebSocketServer implements InitializingBean {
     private static final Logger log = LoggerFactory.getLogger(WebSocketServer.class);
@@ -54,14 +54,14 @@ public class WebSocketServer implements InitializingBean {
 
     @OnOpen
     public void onOpen(Session session, @PathParam("roomId") Integer roomId,
-            @PathParam("username") String username,
+            @PathParam("userId") String userId,
             @PathParam("avatar") String avatar) {
-        log.info("WebSocket连接请求: roomId={}, username={}, avatar={}", roomId, username, avatar);
+        log.info("WebSocket连接请求: roomId={}, userId={}, avatar={}", roomId, userId, avatar);
 
         try {
             // 1. 检查房间是否存在且可用
             ChatRoom room = staticChatRoomService.findById(roomId);
-            if (room == null || !room.getIsChat()||!room.getIsAvailable()) {
+            if (room == null || !room.getIsChat() || !room.getIsAvailable()) {
                 session.close(new CloseReason(CloseReason.CloseCodes.CANNOT_ACCEPT,
                         room == null ? "聊天室不存在" : "聊天室已禁言"));
                 return;
@@ -77,16 +77,16 @@ public class WebSocketServer implements InitializingBean {
             roomSessions.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
             roomUsers.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
 
-            // 解码用户名和头像
-            String decodedUsername = URLUtil.decode(Base64.decodeStr(username));
+            // 解码用户ID和头像
+            String decodedUserId = URLUtil.decode(Base64.decodeStr(userId));
             String decodedAvatar = URLUtil.decode(avatar);
 
-            // 检查用户是否已经在房间中(通过用户名判断)
+            // 检查用户是否已经在房间中(通过用户ID判断)
             boolean userAlreadyInRoom = roomUsers.get(roomId).values().stream()
-                    .anyMatch(user -> decodedUsername.equals(((Dict) user).getStr("name")));
+                    .anyMatch(user -> decodedUserId.equals(((Dict) user).getStr("userId")));
 
             if (userAlreadyInRoom) {
-                log.info("用户 {} 已经在房间 {} 中，拒绝重复加入", decodedUsername, roomId);
+                log.info("用户ID {} 已经在房间 {} 中，拒绝重复加入", decodedUserId, roomId);
                 session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "你已经在此聊天室中"));
                 return;
             }
@@ -94,7 +94,7 @@ public class WebSocketServer implements InitializingBean {
             // 4. 添加用户到房间
             roomSessions.get(roomId).put(session.getId(), session);
             Dict user = Dict.create()
-                    .set("name", decodedUsername)
+                    .set("userId", decodedUserId)
                     .set("avatar", decodedAvatar);
             roomUsers.get(roomId).put(session.getId(), user);
 
@@ -153,6 +153,13 @@ public class WebSocketServer implements InitializingBean {
                 String content = jsonObject.getStr("content");
                 Boolean isAnonymous = jsonObject.getBool("isAnonymous", false);
 
+                // 从消息中获取用户名
+                String username = jsonObject.getStr("username");
+                if (username == null || username.isEmpty()) {
+                    log.warn("消息中缺少username字段，消息将无法发送");
+                    return;
+                }
+
                 // 获取当前用户信息（从Session中）
                 Dict userDict = (Dict) roomUsers.get(roomId).get(fromSession.getId());
                 if (userDict == null) {
@@ -168,8 +175,8 @@ public class WebSocketServer implements InitializingBean {
                 chatMessage.setType("message");
                 chatMessage.setIsAnonymous(isAnonymous);
 
-                // 从用户Session中获取名称和头像
-                chatMessage.setName((String) userDict.get("name"));
+                // 使用从消息中获取的用户名
+                chatMessage.setName(username);
                 chatMessage.setAvatar((String) userDict.get("avatar"));
 
                 // 设置用户ID - 优先从消息中获取

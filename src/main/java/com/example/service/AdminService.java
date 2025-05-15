@@ -3,13 +3,23 @@ package com.example.service;
 import com.example.common.JwtTokenUtils;
 import com.example.common.ServerConfig;
 import com.example.dao.AdminDao;
+import com.example.dao.UserDao;
+import com.example.dao.ChatRoomDao;
+import com.example.dao.ReservationDao;
 import com.example.entity.Admin;
 import com.example.exception.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AdminService {
@@ -19,6 +29,15 @@ public class AdminService {
 
     @Resource
     private AdminDao adminDao;
+
+    @Resource
+    private UserDao userDao;
+
+    @Resource
+    private ChatRoomDao chatRoomDao;
+
+    @Resource
+    private ReservationDao reservationDao;
 
     /**
      * 管理员登录
@@ -80,5 +99,85 @@ public class AdminService {
         }
         // 执行删除
         adminDao.deleteByPrimaryKey(id);
+    }
+
+    /**
+     * 获取仪表盘数据
+     */
+    public Map<String, Object> getDashboardData() {
+        Map<String, Object> dashboardData = new HashMap<>();
+
+        // 获取用户总数
+        int userCount = userDao.findAll().size();
+        dashboardData.put("userCount", userCount);
+
+        // 获取活跃聊天室数量
+        int activeRooms = chatRoomDao.countActiveRooms();
+        dashboardData.put("activeRooms", activeRooms);
+
+        // 获取总预约数
+        int totalReservations = reservationDao.countAll();
+        dashboardData.put("totalReservations", totalReservations);
+
+        // 获取当前活跃预约数
+        int activeReservations = reservationDao.countActiveReservations();
+        dashboardData.put("activeReservations", activeReservations);
+
+        // 统计数据
+        Map<String, Object> statistics = new HashMap<>();
+
+        // 每日统计 - 最近7天
+        List<Map<String, Object>> dailyStats = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            String dateStr = date.format(formatter);
+
+            Map<String, Object> dayStat = new HashMap<>();
+            dayStat.put("date", dateStr);
+            dayStat.put("reservations", reservationDao.countByDate(dateStr));
+            dayStat.put("activeUsers", userDao.countActiveUsersByDate(dateStr));
+
+            dailyStats.add(dayStat);
+        }
+        statistics.put("daily", dailyStats);
+
+        // 每周统计 - 最近4周
+        List<Map<String, Object>> weeklyStats = new ArrayList<>();
+        // 实际项目中应添加周统计逻辑
+        statistics.put("weekly", weeklyStats);
+
+        // 每月统计 - 最近6个月
+        List<Map<String, Object>> monthlyStats = new ArrayList<>();
+        // 实际项目中应添加月统计逻辑
+        statistics.put("monthly", monthlyStats);
+
+        dashboardData.put("statistics", statistics);
+
+        return dashboardData;
+    }
+
+    /**
+     * 上传头像
+     */
+    public String uploadAvatar(MultipartFile file) {
+        try {
+            // 获取文件名
+            String fileName = file.getOriginalFilename();
+            // 获取文件后缀
+            String suffix = fileName.substring(fileName.lastIndexOf("."));
+            // 生成新文件名
+            String newFileName = System.currentTimeMillis() + suffix;
+            // 文件保存路径
+            String filePath = serverConfig.getUploadPath() + newFileName;
+            // 保存文件
+            file.transferTo(new java.io.File(filePath));
+            // 返回文件访问路径
+            return serverConfig.getUrl() + "/files/" + newFileName;
+        } catch (Exception e) {
+            throw new CustomException("上传头像失败: " + e.getMessage());
+        }
     }
 }

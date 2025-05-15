@@ -5,9 +5,11 @@ import com.example.common.Result;
 import com.example.entity.Admin;
 import com.example.service.AdminService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin
 @RestController
@@ -44,6 +46,15 @@ public class AdminController {
     }
 
     /**
+     * 获取仪表盘数据
+     */
+    @GetMapping("/dashboard")
+    public Result getDashboardData() {
+        Map<String, Object> dashboardData = adminService.getDashboardData();
+        return Result.success(dashboardData);
+    }
+
+    /**
      * 获取所有管理员
      */
     @GetMapping("/findAll/{id}")
@@ -77,5 +88,17 @@ public class AdminController {
     public Result delete(@PathVariable Integer id) {
         adminService.delete(id);
         return Result.success();
+    }
+
+    /**
+     * 上传头像
+     */
+    @PostMapping("/avatar")
+    public Result uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String avatarUrl = adminService.uploadAvatar(file);
+        Admin currentAdmin = JwtTokenUtils.getCurrentAdmin();
+        currentAdmin.setAvatar(avatarUrl);
+        adminService.update(currentAdmin);
+        return Result.success(avatarUrl);
     }
 }

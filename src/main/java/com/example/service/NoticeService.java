@@ -17,7 +17,6 @@ public class NoticeService {
     @Resource
     private NoticeDao noticeDao;
 
-
     public void add(Notice notice) {
         notice.setTime(DateUtil.now());
         noticeDao.insertSelective(notice);
@@ -25,7 +24,9 @@ public class NoticeService {
 
     public PageInfo<Notice> findBySearch(Params params) {
         // 开启分页查询
-        PageHelper.startPage(params.getPageNum(), params.getPageSize());
+        int pageNum = params.getPageNum() == null ? 1 : params.getPageNum();
+        int pageSize = params.getPageSize() == null ? 10 : params.getPageSize();
+        PageHelper.startPage(pageNum, pageSize);
         // 接下来的查询会自动按照当前开启的分页设置来查询
         List<Notice> list = noticeDao.findBySearch(params);
         return PageInfo.of(list);
