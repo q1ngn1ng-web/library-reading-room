@@ -86,8 +86,12 @@ const actions = {
     try {
       // 获取楼层信息
       const floorsResponse = await getFloors()
+      console.log('获取的楼层信息:', floorsResponse)
+
       if (floorsResponse.code === '0') {
         const floors = floorsResponse.data
+        console.log('楼层数量:', floors.length, '楼层数据:', floors)
+
         // 设置总楼层数
         commit('SET_TOTAL_FLOORS', floors.length)
         commit('SET_CURRENT_FLOOR', floorNumber || 1)
@@ -248,7 +252,7 @@ const actions = {
         // 添加到历史预约
         commit('ADD_PAST_RESERVATION', {
           ...state.activeReservation,
-          status: 4, // 使用数字4表示"已取消"
+          status: 3, // 使用数字3表示"已取消"
         })
 
         // 清除活跃预约
@@ -521,15 +525,13 @@ const actions = {
             // 数字字符串，转为数字
             processedReservation.status = parseInt(processedReservation.status);
           } else if (typeof processedReservation.status === 'string') {
-            // 字符串状态转换为数字
+            // 根据后端返回的状态字符串转换为数字
             switch(processedReservation.status.toLowerCase()) {
               case 'reserved': processedReservation.status = 1; break;
               case 'checked_in':
               case 'occupied': processedReservation.status = 2; break;
-              case 'timeout': processedReservation.status = 3; break;
               case 'cancelled':
-              case 'canceled': processedReservation.status = 4; break;
-              case 'completed': processedReservation.status = 5; break;
+              case 'canceled': processedReservation.status = 3; break;
               default: processedReservation.status = 0; // 默认为可预约状态
             }
           } else {
@@ -622,7 +624,7 @@ const actions = {
               // 添加到历史预约
               commit('ADD_PAST_RESERVATION', {
                 ...state.activeReservation,
-                status: 3 // 使用数字3表示超时状态
+                status: 3 // 使用数字3表示已取消状态
               });
 
               // 清除活跃预约
@@ -657,7 +659,7 @@ const actions = {
               // 根据后端返回更新预约状态
               commit('ADD_PAST_RESERVATION', {
                 ...state.activeReservation,
-                status: 3 // 使用数字3表示超时状态
+                status: 3 // 使用数字3表示已取消状态
               });
               commit('SET_ACTIVE_RESERVATION', null);
 
@@ -707,11 +709,11 @@ const getters = {
 
     // 检查主状态
     const mainStatus = state.activeReservation.status;
-    const isValidMain = mainStatus === 1 || mainStatus === 5;
+    const isValidMain = mainStatus === 1 || mainStatus === 2;
 
     // 检查嵌套预约状态（如果存在）
     const nestedStatus = state.activeReservation.reservation?.status;
-    const isValidNested = nestedStatus === 1 || nestedStatus === 5;
+    const isValidNested = nestedStatus === 1 || nestedStatus === 2;
 
     // 返回状态检查结果
     return isValidMain || isValidNested;

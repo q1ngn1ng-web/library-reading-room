@@ -2,10 +2,11 @@
  * WebSocket服务类 - 处理聊天室WebSocket连接
  */
 class WebSocketService {
-  constructor(roomId, userId, username, avatar, onMessage, onUserList) {
+  constructor(roomId, userId, displayName, avatar, onMessage, onUserList) {
     this.roomId = roomId;
     this.userId = userId;
-    this.username = username;
+    this.username = displayName; // 使用displayName作为username传递给后端
+    this.displayName = displayName; // 存储显示名称
     this.avatar = avatar;
     this.onMessage = onMessage;
     this.onUserList = onUserList;
@@ -33,6 +34,7 @@ class WebSocketService {
       roomId: this.roomId,
       userId: this.userId,
       username: this.username,
+      displayName: this.displayName,
       avatar: this.avatar
     });
 
@@ -76,8 +78,30 @@ class WebSocketService {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'userList') {
-            this.onUserList(data.users);
+            // Process user list to add displayName property
+            const processedUsers = data.users.map(user => {
+              // 确保每个用户都有displayName属性
+              if (!user.displayName) {
+                // 如果用户名格式是 "楼层号座位号 用户名" 的格式，保留原样
+                if (user.username && user.username.match(/\d+层\d+号/)) {
+                  user.displayName = user.username;
+                } else {
+                  // 否则使用用户昵称或用户名
+                  user.displayName = user.nickname || user.username;
+                }
+              }
+              return user;
+            });
+
+            console.log('接收到用户列表:', processedUsers);
+            this.onUserList(processedUsers);
           } else if (data.type === 'message') {
+            // Process message to ensure it has proper displayName
+            if (data.isAnonymous !== true) {
+              if (!data.displayName) {
+                data.displayName = data.nickname || data.username || data.name;
+              }
+            }
             this.onMessage(data);
           }
         } catch (error) {
@@ -161,7 +185,8 @@ class WebSocketService {
         content: content,
         isAnonymous: isAnonymous,
         userId: this.userId,
-        username: this.username  // 添加用户名
+        username: this.username,  // 保留用户名
+        displayName: this.displayName // 添加显示名称
       };
       console.log('发送消息:', message);
       this.ws.send(JSON.stringify(message));

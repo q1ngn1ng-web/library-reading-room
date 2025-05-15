@@ -15,10 +15,8 @@ const request = axios.create({
 request.interceptors.request.use(config => {
     // 设置默认Content-Type
     config.headers['Content-Type'] = 'application/json;charset=utf-8';
-
     // 1. 优先使用显式传递的role参数
     let role = '';
-
     // 检查是否在请求配置中指定了role
     if (config.role) {
         role = config.role;
@@ -29,16 +27,13 @@ request.interceptors.request.use(config => {
         const isAdminUrl = config.url.includes('/admin') || window.location.pathname.includes('/admin');
         role = isAdminUrl ? 'admin' : 'user';
     }
-
     // 添加角色标识到请求头
     config.headers['X-Role'] = role;
-
     // 根据角色获取对应的token
     const token = localStorage.getItem(`${role}-token`);
     if (token) {
         config.headers['token'] = token;
     }
-
     return config;
 }, error => {
     return Promise.reject(error);

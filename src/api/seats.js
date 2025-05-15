@@ -23,7 +23,7 @@ export function getSeatDetail(seatId) {
 // 获取所有楼层信息
 export function getFloors() {
   return request({
-    url: '/seats/floors',
+    url: '/chatRoom/list',  // 使用聊天室列表接口，确保获取所有楼层
     method: 'get',
     role: 'user'
   })
@@ -53,7 +53,7 @@ export function cancelReservation(reservationId, reason = 'user_cancel') {
     params: {
       reservationId,
       reason,
-      status: 4  // 取消状态为4
+      status: 3  // 取消状态为3
     }
   })
 }

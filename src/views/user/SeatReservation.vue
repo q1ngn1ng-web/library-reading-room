@@ -136,7 +136,7 @@
 
     <!-- 预约对话框 -->
     <el-dialog
-      :title="`预约${currentFloor}层${selectedSeat?.seatNumber || ''}号座位`"
+      :title="`预约${currentFloor}层${selectedSeat?.number || ''}号座位`"
       :visible.sync="showReservationDialog"
       width="500px"
     >
@@ -156,7 +156,11 @@
         <el-form-item label="时间段" required>
           <el-time-select
             v-model="reservationForm.startTime"
-            :picker-options="startTimeOptions"
+            :picker-options="{
+              start: '08:00',
+              step: '00:30',
+              end: '21:30'
+            }"
             placeholder="开始时间"
             style="width: 45%;"
           ></el-time-select>
@@ -166,7 +170,7 @@
             :picker-options="{
               start: '08:30',
               step: '00:30',
-              end: '22:30',
+              end: '22:00',
               minTime: reservationForm.startTime
             }"
             placeholder="结束时间"
@@ -327,18 +331,36 @@ export default {
         minMinute = 0;
       }
 
+      // 如果时间已超过21:30，设置为最早的08:00，因为可能没有可选时间了
+      if (minHour >= 21 && minMinute >= 30) {
+        minHour = 8;
+        minMinute = 0;
+      }
+
       // 格式化为"HH:mm"格式，确保小于10的数字前面有0
       const minTime = `${minHour < 10 ? '0' + minHour : minHour}:${minMinute === 0 ? '00' : minMinute}`;
 
       // 判断是否为今天预约
       const isToday = this.reservationForm.date === this.getCurrentDateString();
 
+      // 计算开始和结束时间
+      const startTime = isToday ? minTime : '08:00';
+      const endTime = '21:30'; // 最晚可预约到21:30
+
+      console.log('时间选择配置:', {
+        当前时间: `${currentHour}:${currentMinute}`,
+        计算的最早时间: minTime,
+        是否今天: isToday,
+        开始时间: startTime,
+        结束时间: endTime
+      });
+
       // 如果是今天预约，使用当前时间后最近的30分钟点作为最早可选时间
       // 如果是明天预约，允许从8点开始选择
       return {
-        start: isToday ? minTime : '08:00',
+        start: startTime,
         step: '00:30',
-        end: '22:00'
+        end: endTime
       };
     },
 
@@ -363,11 +385,11 @@ export default {
       // 嵌套结构
       if (this.activeReservation.reservation) {
         const status = this.activeReservation.reservation.status;
-        return status === 'checked_in' || status === 5;
+        return status === 'checked_in' || status === 2;
       }
 
       // 扁平结构
-      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 5;
+      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 2;
     },
 
     // 是否显示取消按钮
@@ -393,6 +415,8 @@ export default {
 
       // 初始化楼层
       await this.initializeFloor(this.currentFloor || 1)
+      console.log('当前总楼层数:', this.totalFloors)
+
       // 获取座位信息
       await this.fetchFloorSeats(this.currentFloor)
       // 启动超时检查
@@ -439,6 +463,17 @@ export default {
       // 关闭座位详情对话框
       this.showSeatDetailDialog = false
 
+      // 计算默认开始时间 - 使用当前时间向前取整到半小时
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes() >= 30 ? 30 : 0;
+      const defaultStartTime = `${hour < 10 ? '0' + hour : hour}:${minute === 0 ? '00' : minute}`;
+
+      // 设置默认结束时间（开始时间1小时后）
+      const endHour = minute === 30 ? hour + 1 : hour;
+      const endMinute = minute === 30 ? 0 : 30;
+      const defaultEndTime = `${endHour < 10 ? '0' + endHour : endHour}:${endMinute === 0 ? '00' : endMinute}`;
+
       // 设置预约表单
       this.reservationForm = {
         userId: this.currentUser.id,
@@ -446,19 +481,45 @@ export default {
         roomId: seat.roomId || seat.room_id,
         seatNumber: seat.seatNumber || seat.number,
         date: this.getCurrentDateString(),
-        startTime: '',
-        endTime: '',
+        startTime: '08:00', // 设置一个默认开始时间
+        endTime: '09:00',   // 设置一个默认结束时间
         remark: ''
       }
+
+      console.log('打开预约对话框，默认时间设置:', {
+        开始时间: this.reservationForm.startTime,
+        结束时间: this.reservationForm.endTime
+      });
 
       // 显示预约对话框
       this.showReservationDialog = true
 
       // 监听日期变化，当日期改变时重置开始时间
       this.$watch('reservationForm.date', (newDate) => {
-        // 重置开始和结束时间
-        this.reservationForm.startTime = '';
-        this.reservationForm.endTime = '';
+        // 如果选择的是明天，重置为早上8点
+        if (newDate !== this.getCurrentDateString()) {
+          this.reservationForm.startTime = '08:00';
+          this.reservationForm.endTime = '09:00';
+        } else {
+          // 如果是今天，重置为当前时间后最近的半小时
+          this.reservationForm.startTime = defaultStartTime;
+          this.reservationForm.endTime = defaultEndTime;
+        }
+        console.log('日期改变，新时间:', {
+          日期: newDate,
+          开始时间: this.reservationForm.startTime,
+          结束时间: this.reservationForm.endTime
+        });
+      });
+    },
+
+    // 记录时间选择器的焦点事件，用于调试
+    logTimeSelection(type) {
+      console.log(`${type} 选择器获得焦点`, {
+        当前日期: this.reservationForm.date,
+        当前开始时间: this.reservationForm.startTime,
+        当前结束时间: this.reservationForm.endTime,
+        时间选项: this.startTimeOptions
       });
     },
 

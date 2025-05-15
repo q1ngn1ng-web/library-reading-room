@@ -57,7 +57,7 @@
         <div class="user-list">
           <div v-for="user in onlineUsers" :key="user.username" class="user-item">
             <el-avatar :size="32" :src="user.avatar || defaultAvatar"></el-avatar>
-            <span class="user-name">{{ user.username }}</span>
+            <span class="user-name">{{ formatUserName(user) }}</span>
           </div>
           <div v-if="onlineUsers.length === 0" class="no-users">
             暂无在线用户
@@ -71,7 +71,7 @@
             <div class="message-sender">
               <el-avatar :size="36" :src="msg.avatar || defaultAvatar"></el-avatar>
               <div class="message-info">
-                <div class="sender-name">{{ msg.isAnonymous ? '匿名用户' : msg.name }}</div>
+                <div class="sender-name">{{ msg.isAnonymous ? '匿名用户' : (msg.displayName || msg.nickname || msg.name) }}</div>
                 <div class="message-time">{{ formatTime(msg.time) }}</div>
               </div>
             </div>
@@ -170,8 +170,7 @@ export default {
     //       检查条件1: (this.currentRoom.isAvailable && this.currentRoom.isChat),
     //       检查条件2: (this.currentRoom.is_available && this.currentRoom.is_chat)
     //     });
-    //   }
-    // },
+    //   },
     handleWebSocketError(errorMsg) {
       this.connectionError = true;
       this.$message.error(errorMsg || 'WebSocket连接失败，请刷新页面重试');
@@ -194,7 +193,23 @@ export default {
       })
     },
     handleUserList(users) {
-      this.updateOnlineUsers(users)
+      // 处理用户列表，确保每个用户都有正确的显示名称
+      const processedUsers = users.map(user => {
+        // 如果用户没有displayName，添加一个
+        if (!user.displayName) {
+          // 如果用户名已经包含座位信息(例如 "1层2号 用户名")，则直接使用
+          if (user.username && user.username.match(/\d+层\d+号/)) {
+            user.displayName = user.username;
+          } else {
+            // 否则使用昵称或用户名
+            user.displayName = user.nickname || user.username;
+          }
+        }
+        return user;
+      });
+
+      console.log('处理后的用户列表:', processedUsers);
+      this.updateOnlineUsers(processedUsers)
     },
     scrollToBottom() {
       const messageList = this.$refs.messageList
@@ -243,12 +258,23 @@ export default {
 
       // 获取当前预约的座位信息
       const activeReservation = this.getActiveReservation;
-      let displayName = this.user.username;
+      let displayName = this.user.nickname || this.user.username;
 
       // 如果有活跃预约，添加座位前缀
       if (activeReservation && activeReservation.floorNumber && activeReservation.seatNumber) {
-        displayName = `${activeReservation.floorNumber}层${activeReservation.seatNumber}号 ${this.user.username}`;
+        displayName = `${activeReservation.floorNumber}层${activeReservation.seatNumber}号 ${this.user.nickname || this.user.username}`;
       }
+
+      console.log('创建WebSocket连接，用户信息:', {
+        用户ID: userId,
+        昵称: this.user.nickname,
+        用户名: this.user.username,
+        显示名称: displayName,
+        预约信息: activeReservation ? {
+          楼层: activeReservation.floorNumber,
+          座位号: activeReservation.seatNumber
+        } : '无预约'
+      });
 
       this.wsService = new WebSocketService(
         this.roomId,
@@ -308,7 +334,22 @@ export default {
         return false
       }
       return true
-    }
+    },
+    // 处理用户显示名称
+    formatUserName(user) {
+      // 如果用户已经有格式化的显示名称，则直接使用
+      if (user.displayName) {
+        return user.displayName;
+      }
+
+      // 如果用户名已经包含座位信息(例如 "1层2号 用户名")，则直接使用
+      if (user.username && user.username.match(/\d+层\d+号/)) {
+        return user.username;
+      }
+
+      // 否则使用昵称或用户名
+      return user.nickname || user.username;
+    },
   },
   watch: {
     // 监听currentRoom数据变化
@@ -318,6 +359,13 @@ export default {
           console.log('聊天室数据已更新:');
           // this.logRoomState();
         }
+      },
+      deep: true
+    },
+    // 监听在线用户列表变化
+    onlineUsers: {
+      handler(newUsers) {
+        console.log('在线用户列表已更新:', newUsers);
       },
       deep: true
     }
