@@ -25,8 +25,9 @@ request.interceptors.request.use(config => {
         // 从config中删除role参数，避免发送到后端
         delete config.role;
     } else {
-        // 2. 兼容原有逻辑：通过URL前缀判断
-        role = config.url.startsWith('/admin') ? 'admin' : 'user';
+        // 2. 检查URL是否包含admin路径，或当前页面是否在admin路径下
+        const isAdminUrl = config.url.includes('/admin') || window.location.pathname.includes('/admin');
+        role = isAdminUrl ? 'admin' : 'user';
     }
 
     // 添加角色标识到请求头

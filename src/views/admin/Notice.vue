@@ -76,7 +76,8 @@ export default {
   methods: {
     findBySearch() {
       request.get("/notice/search", {
-        params: this.params
+        params: this.params,
+        role: 'admin'
       }).then(res => {
         if (res.code === '0') {
           this.tableData = res.data.list;
@@ -115,7 +116,7 @@ export default {
       this.findBySearch();
     },
     submit() {
-      request.post("/notice", this.form).then(res => {
+      request.post("/notice", this.form, { role: 'admin' }).then(res => {
         if (res.code === '0') {
           this.$message({
             message: '操作成功',
@@ -132,7 +133,7 @@ export default {
       })
     },
     del(id) {
-      request.delete("/notice/" + id).then(res => {
+      request.delete("/notice/" + id, { role: 'admin' }).then(res => {
         if (res.code === '0') {
           this.$message({
             message: '删除成功',
