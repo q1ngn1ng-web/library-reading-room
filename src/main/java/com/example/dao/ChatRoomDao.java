@@ -3,6 +3,7 @@ package com.example.dao;
 import com.example.entity.ChatRoom;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.springframework.stereotype.Repository;
 import tk.mybatis.mapper.common.Mapper;
 
@@ -21,4 +22,10 @@ public interface ChatRoomDao extends Mapper<ChatRoom> {
      */
     @Select("select count(*) from chat_room where is_available = 1")
     int countActiveRooms();
+
+    /**
+     * 修复负数的currentUser值
+     */
+    @Update("update chat_room set currentUser = 0 where currentUser < 0")
+    int fixNegativeUserCounts();
 }

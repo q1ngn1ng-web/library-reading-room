@@ -62,7 +62,7 @@ public class ReservationServiceImpl implements ReservationService {
         // Check if the user already has an active reservation
         Reservation currentReservation = reservationDao.findCurrentByUserId(reservation.getUserId());
         if (currentReservation != null) {
-            return Result.error("You already have an active reservation.");
+            return Result.error("最多只能预约一个座位.");
         }
 
         // Check if the seat exists and is available
@@ -72,7 +72,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         if (seat.getStatus() != SeatStatus.AVAILABLE.getCode()) {
-            return Result.error("The seat is not available.");
+            return Result.error("该座位已被预约.");
         }
 
         // Set reservation details

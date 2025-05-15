@@ -3,7 +3,10 @@
 <mapper namespace="com.example.dao.ChatRoomDao">
     <update id="updateCurrentUser">
         UPDATE chat_room
-        SET currentUser = currentUser + #{increment}
+        SET currentUser = CASE
+            WHEN (currentUser + #{increment}) &lt; 0 THEN 0
+            ELSE (currentUser + #{increment})
+        END
         WHERE id = #{roomId}
     </update>
 </mapper>
