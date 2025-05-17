@@ -9,16 +9,24 @@
           @change="handleFloorChange">
           <el-option
             v-for="floor in floors"
-            :key="floor.roomId"
+            :key="floor.roomId || floor.id"
             :label="floor.floor"
-            :value="floor.roomId">
+            :value="floor.roomId || floor.id">
+            {{ floor.floor }}
           </el-option>
         </el-select>
         <el-button
           type="primary"
+          style="margin-left: 10px;"
           :disabled="!selectedFloor"
           @click="batchUpdateSeats">
           批量更新座位状态
+        </el-button>
+        <el-button
+          type="warning"
+          style="margin-left: 10px;"
+          @click="fetchFloors">
+          刷新楼层列表
         </el-button>
       </div>
     </div>
@@ -64,6 +72,18 @@
 
     <!-- 座位列表展示 -->
     <div class="seats-container">
+      <!-- 调试信息面板 -->
+      <div v-if="selectedFloor" class="debug-panel">
+        <p><strong>当前选中楼层:</strong> {{ getFloorName(selectedFloor) }} (ID: {{ selectedFloor }})</p>
+        <p><strong>可用楼层:</strong>
+          <span v-for="(floor, index) in floors" :key="floor.roomId || floor.id">
+            {{ floor.floor }} (ID: {{ floor.roomId || floor.id }}){{ index < floors.length - 1 ? ', ' : '' }}
+          </span>
+        </p>
+        <p><strong>数据来源:</strong> {{ allSeats.length > 0 && String(allSeats[0].id).startsWith('demo-') ? '模拟数据' : '真实数据' }}</p>
+        <p><strong>座位总数:</strong> {{ totalSeats }}</p>
+      </div>
+
       <el-table
         v-loading="loading"
         :data="filteredSeats"
@@ -319,12 +339,28 @@ export default {
         .then(res => {
           this.loading = false
           if (res.code === '0') {
-            this.floors = res.data || []
+            // 确保每个楼层对象都有正确的id和roomId属性
+            this.floors = (res.data || []).map(floor => ({
+              ...floor,
+              // 确保roomId存在，如果没有则使用id
+              roomId: floor.roomId || floor.id,
+              // 确保floor字段存在，如果没有则使用默认格式
+              floor: floor.floor || `${floor.id}层`
+            }));
+
             console.log('获取到楼层列表:', this.floors)
 
             if (this.floors.length > 0) {
-              this.selectedFloor = this.floors[0].roomId
-              this.fetchSeats()
+              // 存储所有楼层ID，以便于调试
+              const allFloorIds = this.floors.map(f => f.roomId || f.id);
+              console.log('所有楼层ID:', allFloorIds);
+
+              // 默认选择第一个楼层
+              this.selectedFloor = this.floors[0].roomId || this.floors[0].id;
+              console.log('默认选择楼层ID:', this.selectedFloor);
+
+              // 加载选中楼层的座位
+              this.fetchSeats();
             } else {
               this.$message.warning('未找到可用楼层')
             }
@@ -341,7 +377,21 @@ export default {
 
     // 楼层切换
     handleFloorChange(value) {
-      console.log('切换楼层:', value)
+      console.log('切换楼层，旧值:', this.selectedFloor, '新值:', value)
+
+      // 确保value是有效值
+      if (!value) {
+        this.$message.warning('无效的楼层选择')
+        return
+      }
+
+      // 在房间列表中查找此楼层ID
+      const floorExists = this.floors.some(f => (f.roomId || f.id) == value);
+      if (!floorExists) {
+        console.warn('选择的楼层ID不在获取的楼层列表中:', value);
+      }
+
+      this.selectedFloor = value;
       this.currentPage = 1 // 重置页码
       this.searchForm = { // 重置搜索条件
         seatNumber: '',
@@ -352,8 +402,16 @@ export default {
 
     // 根据楼层ID获取楼层名称
     getFloorName(roomId) {
-      const floor = this.floors.find(f => f.roomId === roomId)
-      return floor ? floor.floor : `楼层 ${roomId}`
+      if (!roomId) return '未知楼层';
+
+      // 尝试查找匹配的楼层
+      const floor = this.floors.find(f => {
+        // 比较两种ID形式
+        return (f.roomId === roomId || f.id === roomId ||
+                String(f.roomId) === String(roomId) || String(f.id) === String(roomId));
+      });
+
+      return floor ? floor.floor : `楼层 ${roomId}`;
     },
 
     // 获取座位列表
@@ -364,10 +422,13 @@ export default {
       }
 
       this.loading = true
-      console.log('正在获取座位列表，楼层ID:', this.selectedFloor)
+      console.log('正在获取座位列表，楼层ID:', this.selectedFloor, '类型:', typeof this.selectedFloor)
 
       // 尝试直接从seats/list接口获取座位数据
-      request.get(`/seats/list?roomId=${this.selectedFloor}`)
+      const endpoint = `/seats/list?roomId=${this.selectedFloor}`
+      console.log('调用API:', endpoint)
+
+      request.get(endpoint)
         .then(res => {
           this.loading = false
           console.log('座位API响应:', res)
@@ -387,8 +448,9 @@ export default {
             this.totalSeats = this.allSeats.length
 
             if (this.allSeats.length === 0) {
-              // 如果没有数据，尝试创建示例座位数据
-              this.createDemoSeats()
+              console.log('当前楼层无座位数据，尝试备用API')
+              // 如果没有数据，尝试备用API
+              this.fetchSeatsAlternative()
             }
           } else {
             // 如果API调用失败，尝试创建示例座位数据
@@ -408,7 +470,10 @@ export default {
       this.loading = true
 
       // 尝试原来的API端点
-      request.get(`/seats/status?roomId=${this.selectedFloor}`)
+      const endpoint = `/seats/status?roomId=${this.selectedFloor}`
+      console.log('调用备用API:', endpoint)
+
+      request.get(endpoint)
         .then(res => {
           this.loading = false
           console.log('备用座位API响应:', res)
@@ -812,5 +877,12 @@ export default {
   color: #909399;
   padding: 40px 0;
   font-size: 14px;
+}
+
+.debug-panel {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 </style>
