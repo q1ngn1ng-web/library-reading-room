@@ -44,12 +44,15 @@ const mutations = {
     state.activeReservation = reservation
     // 保存到本地存储，确保页面刷新后还能获取到预约信息
     if (reservation) {
-      // 检查是否有访问聊天室的权限（status=1表示预约成功，status=5表示签到完成）
-      const hasValidStatus = reservation.status === 1 || reservation.status === 5;
+      // 检查是否有访问聊天室的权限
+      // 状态1:成功预约 2:已签到(使用中) 都可以访问聊天室
+      const hasValidStatus = reservation.status === 1 ||
+                            reservation.status === 5; // 兼容旧版已签到状态码
 
       // 检查嵌套结构中的status字段
       const nestedStatus = reservation.reservation?.status;
-      const hasValidNestedStatus = nestedStatus === 1 || nestedStatus === 5;
+      const hasValidNestedStatus = nestedStatus === 1 ||
+                                  nestedStatus === 5;
 
       // 设置聊天室访问权限
       state.chatAvailable = hasValidStatus || hasValidNestedStatus;
@@ -704,19 +707,17 @@ const getters = {
 
   // 判断用户是否有活跃预约
   hasActiveReservation: state => {
-    // 判断是否可以访问聊天室，不仅仅检查预约存在性，还要检查预约状态
+    // 首先检查是否有activeReservation
     if (!state.activeReservation) return false;
 
-    // 检查主状态
+    // 检查状态码 1:成功预约 2:使用中(已签到) 5:兼容旧版已签到
+    const validStatuses = [1, 5];
     const mainStatus = state.activeReservation.status;
-    const isValidMain = mainStatus === 1 || mainStatus === 2;
-
-    // 检查嵌套预约状态（如果存在）
     const nestedStatus = state.activeReservation.reservation?.status;
-    const isValidNested = nestedStatus === 1 || nestedStatus === 2;
 
-    // 返回状态检查结果
-    return isValidMain || isValidNested;
+    // 检查主状态或嵌套状态是否有效
+    return validStatuses.includes(Number(mainStatus)) ||
+           validStatuses.includes(Number(nestedStatus));
   },
 
   // 获取用户当前占用的座位
@@ -749,7 +750,27 @@ const getters = {
 
   // 是否可访问聊天室（新增getter）
   canAccessChat: state => {
-    return state.chatAvailable || false;
+    // 首先检查是否有activeReservation
+    if (!state.activeReservation) return false;
+
+    // 检查状态码 1:成功预约 2:使用中(已签到) 5:兼容旧版已签到
+    const validStatuses = [1, 5];
+    const mainStatus = state.activeReservation.status;
+    const nestedStatus = state.activeReservation.reservation?.status;
+
+    // 检查主状态或嵌套状态是否有效
+    const hasValidStatus = validStatuses.includes(Number(mainStatus)) ||
+                         validStatuses.includes(Number(nestedStatus));
+
+    console.log('聊天室访问权限检查:', {
+      activeReservation: !!state.activeReservation,
+      mainStatus,
+      nestedStatus,
+      hasValidStatus,
+      chatAvailable: state.chatAvailable
+    });
+
+    return hasValidStatus;
   },
 }
 

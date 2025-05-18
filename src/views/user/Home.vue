@@ -21,89 +21,87 @@
             <span>🕒 我的当前预约</span>
             <el-button
               size="mini"
-              @click="$router.push('/user/seats')"
+              @click="$router.push('/seat-reservation')"
               style="float: right; padding: 3px 0"
             >
               {{ activeReservation ? '修改预约' : '去预约' }}
             </el-button>
           </div>
 
-          <el-table
-            :data="activeReservation ? [formatReservation(activeReservation)] : []"
-            style="width: 100%"
-            v-loading="loading"
-          >
-            <template v-slot:empty>
-              <div class="empty-tip">
-                <i class="el-icon-info"></i> 当前没有进行中的预约
-              </div>
-            </template>
-            <el-table-column label="楼层/座位" width="120">
-              <template slot-scope="{row}">
-                {{ row.floorNumber }}楼{{ row.seatNumber }}号
-              </template>
-            </el-table-column>
+          <div v-loading="loading">
+            <!-- 无预约时显示提示 -->
+            <div v-if="!activeReservation || !formatReservation(activeReservation)" class="empty-tip">
+              <i class="el-icon-info"></i> 当前没有进行中的预约
+            </div>
 
-            <el-table-column label="日期" width="120">
-              <template slot-scope="{row}">
-                {{ row.dateOnly }}
-              </template>
-            </el-table-column>
-
-            <el-table-column label="时间段">
-              <template slot-scope="{row}">
-                {{ row.timeRange }}
-              </template>
-            </el-table-column>
-
-            <el-table-column label="状态" width="120">
-              <template slot-scope="{row}">
-                <el-tag :type="getStatusTagType(row.status)" size="small">
-                  {{ getReservationStatusText(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="操作" width="180">
-              <template slot-scope="{row}">
-                <div>
-                  <!-- 调试信息 -->
-                  <div style="font-size: 11px; color: #999; margin-bottom: 5px;">
-                    状态值: {{row.status}} ({{typeof row.status}})
-                  </div>
-
-                  <!-- 已预约状态显示签到和取消按钮 -->
-                  <template v-if="isReservedStatus(row.status)">
-                    <el-button
-                      size="mini"
-                      type="primary"
-                      @click="handleCheckIn()"
-                    >
-                      签到
-                    </el-button>
-                    <el-button
-                      size="mini"
-                      type="danger"
-                      @click="handleCancelReservation()"
-                    >
-                      取消预约
-                    </el-button>
-                  </template>
-
-                  <!-- 已签到状态显示退座按钮 -->
-                  <template v-if="isCheckedInStatus(row.status)">
-                    <el-button
-                      size="mini"
-                      type="warning"
-                      @click="handleCheckOut()"
-                    >
-                      退座
-                    </el-button>
-                  </template>
+            <!-- 有预约时显示竖式卡片 -->
+            <div v-else class="reservation-vertical-card">
+              <div v-if="activeReservation" class="reservation-info">
+                <div class="reservation-item">
+                  <div class="item-label">楼层/座位</div>
+                  <div class="item-value">{{ formatReservation(activeReservation).floorNumber }}楼{{ formatReservation(activeReservation).seatNumber }}号</div>
                 </div>
-              </template>
-            </el-table-column>
-          </el-table>
+
+                <div class="reservation-item">
+                  <div class="item-label">日期</div>
+                  <div class="item-value">{{ formatReservation(activeReservation).dateOnly }}</div>
+                </div>
+
+                <div class="reservation-item">
+                  <div class="item-label">时间段</div>
+                  <div class="item-value">{{ formatReservation(activeReservation).timeRange }}</div>
+                </div>
+
+                <div class="reservation-item">
+                  <div class="item-label">预约超时时间</div>
+                  <div class="item-value">{{ formatTimeoutAt(activeReservation) }}</div>
+                </div>
+
+                <div class="reservation-item">
+                  <div class="item-label">状态</div>
+                  <div class="item-value">
+                    <el-tag :type="getStatusTagType(formatReservation(activeReservation).status)" size="small">
+                      {{ getReservationStatusText(formatReservation(activeReservation).status) }}
+                    </el-tag>
+                  </div>
+                </div>
+
+                <div class="reservation-item">
+                  <div class="item-label">操作</div>
+                  <div class="item-value">
+                    <!-- 已预约状态显示签到和取消按钮 -->
+                    <template v-if="isReservedStatus(formatReservation(activeReservation).status)">
+                      <el-button
+                        size="mini"
+                        type="primary"
+                        @click="handleCheckIn()"
+                      >
+                        签到
+                      </el-button>
+                      <el-button
+                        size="mini"
+                        type="danger"
+                        @click="handleCancelReservation()"
+                      >
+                        取消预约
+                      </el-button>
+                    </template>
+
+                    <!-- 已签到状态显示退座按钮 -->
+                    <template v-if="isCheckedInStatus(formatReservation(activeReservation).status)">
+                      <el-button
+                        size="mini"
+                        type="warning"
+                        @click="handleCheckOut()"
+                      >
+                        退座
+                      </el-button>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </el-card>
       </div>
     </div>
@@ -167,8 +165,6 @@ export default {
     },
     // 格式化预约信息用于表格显示
     formatReservation(reservation) {
-
-
       // 检查是否为有效的预约对象
       if (!reservation || typeof reservation !== 'object' || Array.isArray(reservation)) {
 
@@ -231,6 +227,7 @@ export default {
       const startTimeStr = reservation.startTime || reservation.start_time;
       const endTimeStr = reservation.endTime || reservation.end_time;
       const realStartTimeStr = reservation.realStartTime || reservation.real_start_time;
+      const timeoutAtStr = reservation.timeoutAt || reservation.timeout_at;
 
       // 必要字段检查
       if (!floorNumber || !seatNumber) {
@@ -266,15 +263,11 @@ export default {
         status = 0;
       }
 
-      console.log('状态转换结果:', {
-        originalStatus: reservation.status,
-        convertedStatus: status
-      });
-
       // 提取日期和时间范围
       let startTime = startTimeStr ? new Date(startTimeStr) : null;
       let endTime = endTimeStr ? new Date(endTimeStr) : null;
       let realStartTime = realStartTimeStr ? new Date(realStartTimeStr) : null;
+      let timeoutAt = timeoutAtStr ? new Date(timeoutAtStr) : null;
 
       // 如果有实际开始时间，优先使用
       if (realStartTime && (status === 5 || status === RESERVATION_STATUS.COMPLETED)) {
@@ -288,6 +281,7 @@ export default {
       const formattedStartTime = startTime ? formatDateTime(startTime, 'HH:mm') : '未知';
       const formattedEndTime = endTime ? formatDateTime(endTime, 'HH:mm') : '未知';
       const formattedTimeRange = `${formattedStartTime} - ${formattedEndTime}`;
+      const formattedTimeoutAt = timeoutAt ? formatDateTime(timeoutAt, 'yyyy-MM-dd HH:mm:ss') : '未知';
 
       const result = {
         id: reservationId,
@@ -295,6 +289,7 @@ export default {
         seatNumber,
         dateOnly: formattedDate,       // 仅日期
         timeRange: formattedTimeRange, // 仅时间
+        timeoutAt: formattedTimeoutAt, // 超时时间
         startTime: startTime,
         endTime: endTime,
         status,
@@ -303,6 +298,26 @@ export default {
       };
 
       return result;
+    },
+    // 格式化预约超时时间
+    formatTimeoutAt(reservation) {
+      if (!reservation) return '未知';
+
+      // 嵌套结构
+      if (reservation.reservation) {
+        const timeoutAt = reservation.reservation.timeoutAt || reservation.reservation.timeout_at;
+        if (timeoutAt) {
+          return formatDateTime(new Date(timeoutAt), 'yyyy-MM-dd HH:mm:ss');
+        }
+      }
+
+      // 扁平结构
+      const timeoutAt = reservation.timeoutAt || reservation.timeout_at;
+      if (timeoutAt) {
+        return formatDateTime(new Date(timeoutAt), 'yyyy-MM-dd HH:mm:ss');
+      }
+
+      return '未知';
     },
     // 刷新数据
     refreshData() {
@@ -441,5 +456,40 @@ export default {
 .empty-tip i {
   margin-right: 5px;
   font-size: 16px;
+}
+
+.reservation-vertical-card {
+  border: 1px solid #EBEEF5;
+  border-radius: 8px;
+  background-color: #FAFAFA;
+  padding: 15px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
+
+.reservation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reservation-item {
+  border-bottom: 1px solid #EBEEF5;
+  padding-bottom: 10px;
+}
+
+.item-label {
+  color: #606266;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.item-value {
+  color: #303133;
+  font-size: 15px;
+}
+
+.reservation-item:last-child {
+  border-bottom: none;
 }
 </style>

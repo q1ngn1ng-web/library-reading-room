@@ -296,7 +296,7 @@ export default {
       this.wsService.onOpen = () => {
         this.connectionError = false;
         this.isConnected = true;
-        console.log('WebSocket连接已建立');
+        // console.log('WebSocket连接已建立');
       };
 
       // 执行连接
@@ -306,33 +306,33 @@ export default {
       try {
         await this.fetchChatRoom(this.roomId)
         if (!this.currentRoom) {
-          this.$message.error('聊天室不存在或已关闭')
+          this.$message.error('该聊天室不存在或已关闭，请重新选择一个聊天室进入')
           this.$router.push('/chat-rooms')
           return false
         }
 
         // 添加调试输出
-        console.log('聊天室数据加载完成:', this.currentRoom);
+        // console.log('聊天室数据加载完成:', this.currentRoom);
         // this.logRoomState();
 
         return true
       } catch (error) {
-        console.error('加载聊天室信息失败:', error)
+        // console.error('加载聊天室信息失败:', error)
         this.$message.error('加载聊天室信息失败')
         return false
       }
     },
-    // 跳转到座位预约页面
-    goToSeatReservation() {
-      this.$router.push('/seat-reservation')
-    },
+
     // 检查用户是否可以进入聊天室
     checkAccess() {
-      if (!this.canAccessChat && !this.isAdmin) {
+      if (this.isAdmin) {
+        return true;
+      } else if (!this.canAccessChat) {
         this.$message.warning('您需要有预约或已签到的座位才能使用聊天室')
         this.$router.push('/chat')
         return false
       }
+
       return true
     },
     // 处理用户显示名称
@@ -349,6 +349,10 @@ export default {
 
       // 否则使用昵称或用户名
       return user.nickname || user.username;
+    },
+    // 添加跳转到座位预约页面的方法
+    goToSeatReservation() {
+      this.$router.push('/seat-reservation');
     },
   },
   watch: {

@@ -85,7 +85,7 @@ export default {
     return {
       userInfo: null,
       activeMenu: 'home',
-      currentView: 'Home'
+      currentView: 'router'
     }
   },
   created() {
@@ -96,10 +96,12 @@ export default {
     const path = this.$route.path;
     if (path.includes('chat-room')) {
       this.activeMenu = 'chat-rooms';
-      this.currentView = 'router';
     } else if (path.includes('chat-rooms')) {
       this.activeMenu = 'chat-rooms';
-      this.currentView = 'router';
+    } else if (path.includes('seat-reservation')) {
+      this.activeMenu = 'seat-reservation';
+    } else {
+      this.activeMenu = 'home';
     }
 
     // 监听全局用户信息更新事件
@@ -115,21 +117,22 @@ export default {
     },
     handleSelect(key) {
       this.activeMenu = key
-      // 根据菜单项设置当前视图或进行路由跳转
+      // 设置为路由视图模式，确保router-view能够正确显示，加了这一行才能在进入profile的时候，能够顺利切换到座位预约和聊天室的界面
+      this.currentView = 'router'
+
+      // 根据菜单项进行路由跳转
       switch(key) {
         case 'home':
-          this.currentView = 'Home'
+          this.$router.push('/')
           break
         case 'seat-reservation':
-          this.currentView = 'router'
           this.$router.push('/seat-reservation')
           break
         case 'chat-rooms':
-          this.currentView = 'router'
           this.$router.push('/chat-rooms')
           break
         case 'notice':
-          this.currentView = 'Notice'
+          this.$router.push('/notice')
           break
       }
     },
@@ -160,7 +163,7 @@ export default {
     },
     handlePasswordChanged() {
       this.$message.success('密码修改成功')
-      this.currentView = 'Home' // 修改成功后返回首页
+      this.$router.push('/') // 修改成功后返回首页
       this.activeMenu = 'home'
     },
     handleProfileUpdated() {
@@ -170,7 +173,7 @@ export default {
         this.userInfo = JSON.parse(userInfo)
       }
       this.$message.success('个人信息更新成功')
-      this.currentView = 'Home'
+      this.$router.push('/')
       this.activeMenu = 'home'
     },
   },
@@ -179,10 +182,10 @@ export default {
     '$route'(to) {
       if (to.path.includes('chat-room') || to.path.includes('chat-rooms')) {
         this.activeMenu = 'chat-rooms';
-        this.currentView = 'router';
       } else if (to.path.includes('seat-reservation')) {
         this.activeMenu = 'seat-reservation';
-        this.currentView = 'router';
+      } else if (to.path === '/' || to.path === '') {
+        this.activeMenu = 'home';
       }
     }
   },
