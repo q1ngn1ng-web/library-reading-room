@@ -97,7 +97,13 @@ public class ReservationController {
         Result result = reservationService.getCurrentReservation(userId);
         log.info("查询结果: {}", result.getData());
 
-        // If there's a reservation, get seat information too
+        // 如果没有有效预约（数据为null），直接返回结果
+        if (result.getData() == null) {
+            log.info("用户 {} 无有效预约, 消息: {}", userId, result.getMsg());
+            return result;
+        }
+
+        // 如果有预约记录，处理预约和座位信息
         if (result.getData() instanceof Reservation) {
             Reservation reservation = (Reservation) result.getData();
             log.info("预约详情: id={}, userId={}, seatId={}, status={}",
@@ -105,7 +111,7 @@ public class ReservationController {
                     reservation.getSeatId(), reservation.getStatus());
 
             if (reservation != null && reservation.getSeatId() != null) {
-                // Get the corresponding seat
+                // 获取对应的座位信息
                 try {
                     Object seat = seatDao.selectByPrimaryKey(reservation.getSeatId());
                     if (seat == null) {
@@ -117,7 +123,7 @@ public class ReservationController {
                                     "reservation", reservation,
                                     "seat", seat));
                 } catch (Exception e) {
-                    log.error("Error getting seat information", e);
+                    log.error("获取座位信息失败", e);
                     return Result.error("获取座位信息失败: " + e.getMessage());
                 }
             }

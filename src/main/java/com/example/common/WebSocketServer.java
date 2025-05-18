@@ -9,11 +9,15 @@ import cn.hutool.json.JSONUtil;
 import com.example.entity.ChatMessage;
 import com.example.entity.ChatRoom;
 import com.example.entity.User;
+import com.example.entity.Reservation;
+import com.example.entity.ReservationStatus;
 import com.example.service.ChatMessageService;
 import com.example.service.ChatRoomService;
+import com.example.dao.ReservationDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -21,7 +25,10 @@ import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
+import java.util.Date;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -49,8 +56,12 @@ public class WebSocketServer implements InitializingBean {
     @Resource
     private ChatMessageService chatMessageService;
 
+    @Resource
+    private ReservationDao reservationDao;
+
     static ChatMessageService staticChatMessageService;
     static ChatRoomService staticChatRoomService;
+    static ReservationDao staticReservationDao;
 
     @OnOpen
     public void onOpen(Session session, @PathParam("roomId") Integer roomId,
@@ -73,13 +84,45 @@ public class WebSocketServer implements InitializingBean {
                 return;
             }
 
-            // 3. 初始化房间会话
-            roomSessions.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
-            roomUsers.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
-
             // 解码用户ID和头像
             String decodedUserId = URLUtil.decode(Base64.decodeStr(userId));
             String decodedAvatar = URLUtil.decode(avatar);
+
+            // 验证用户是否有有效预约
+            try {
+                Integer userIdInt = Integer.parseInt(decodedUserId);
+                // 获取用户当前预约
+                Reservation reservation = staticReservationDao.findCurrentByUserId(userIdInt);
+
+                // 检查预约是否有效
+                if (reservation == null || !isValidReservation(reservation)) {
+                    log.info("用户 {} 无有效预约，拒绝聊天室访问", decodedUserId);
+                    session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "无有效预约，无法进入聊天室"));
+                    return;
+                }
+
+                // 检查预约的座位是否在这个聊天室所在的楼层
+                // 注意：这里假设房间ID与楼层ID相关，可能需要根据实际业务逻辑调整
+                if (!reservation.getSeatId().equals(roomId)) {
+                    log.info("用户 {} 预约的座位不在聊天室 {} 所在楼层", decodedUserId, roomId);
+                    session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "预约与聊天室不匹配"));
+                    return;
+                }
+
+                log.info("用户 {} 预约验证通过，允许访问聊天室 {}", decodedUserId, roomId);
+            } catch (NumberFormatException e) {
+                log.error("用户ID格式错误: {}", decodedUserId, e);
+                session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "用户ID格式错误"));
+                return;
+            } catch (Exception e) {
+                log.error("验证预约失败", e);
+                session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "验证预约时发生错误"));
+                return;
+            }
+
+            // 3. 初始化房间会话
+            roomSessions.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+            roomUsers.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
 
             // 检查用户是否已经在房间中(通过用户ID判断)
             boolean userAlreadyInRoom = roomUsers.get(roomId).values().stream()
@@ -116,6 +159,27 @@ public class WebSocketServer implements InitializingBean {
                 log.error("关闭WebSocket连接失败", ex);
             }
         }
+    }
+
+    /**
+     * 判断预约是否有效
+     */
+    private static boolean isValidReservation(Reservation reservation) {
+        // 检查预约是否有效：状态是否正确
+        if (reservation.getStatus() != ReservationStatus.SUCCESS.getCode() &&
+                reservation.getStatus() != ReservationStatus.CHECKED_IN.getCode()) {
+            return false;
+        }
+
+        // 如果未签到，检查是否已超时
+        if (reservation.getStatus() == ReservationStatus.SUCCESS.getCode()) {
+            Date now = new Date();
+            if (now.after(reservation.getTimeoutAt())) {
+                return false; // 预约已超时
+            }
+        }
+
+        return true;
     }
 
     @OnClose
@@ -247,6 +311,60 @@ public class WebSocketServer implements InitializingBean {
         }
     }
 
+    /**
+     * 定期检查并断开过期预约用户的连接
+     */
+    @Scheduled(fixedRate = 60000) // 每分钟执行一次
+    public void disconnectExpiredUsers() {
+        log.debug("开始检查过期预约用户...");
+        Date now = new Date();
+        int totalDisconnected = 0;
+
+        // 遍历所有房间
+        for (Integer roomId : roomSessions.keySet()) {
+            Map<String, Session> sessions = roomSessions.get(roomId);
+            Map<String, Object> users = roomUsers.get(roomId);
+
+            // 创建待断开连接的列表（避免并发修改异常）
+            List<Session> sessionsToClose = new ArrayList<>();
+
+            for (String sessionId : sessions.keySet()) {
+                Dict user = (Dict) users.get(sessionId);
+                if (user != null && user.getStr("userId") != null) {
+                    try {
+                        Integer userId = Integer.parseInt(user.getStr("userId"));
+                        Reservation reservation = staticReservationDao.findCurrentByUserId(userId);
+
+                        // 检查预约是否无效或已过期
+                        if (reservation == null || !isValidReservation(reservation)) {
+                            log.info("用户 {} 的预约已过期或无效，准备断开连接", userId);
+                            sessionsToClose.add(sessions.get(sessionId));
+                        }
+                    } catch (Exception e) {
+                        log.error("检查用户 {} 预约状态时出错", user.getStr("userId"), e);
+                    }
+                }
+            }
+
+            // 关闭所有无效会话
+            for (Session session : sessionsToClose) {
+                try {
+                    session.close(new CloseReason(
+                            CloseReason.CloseCodes.VIOLATED_POLICY, "预约已过期，请重新预约"));
+                    totalDisconnected++;
+                } catch (IOException e) {
+                    log.error("关闭过期会话失败", e);
+                }
+            }
+        }
+
+        if (totalDisconnected > 0) {
+            log.info("已断开 {} 个过期预约用户的连接", totalDisconnected);
+        } else {
+            log.debug("没有发现过期用户连接");
+        }
+    }
+
     // 静态方法，供其他类调用
     public static void sendRoomStatusUpdate(Integer roomId, Boolean status, String message) {
         Map<String, Session> roomSession = roomSessions.get(roomId);
@@ -275,94 +393,7 @@ public class WebSocketServer implements InitializingBean {
     public void afterPropertiesSet() {
         staticChatMessageService = chatMessageService;
         staticChatRoomService = chatRoomService;
+        staticReservationDao = reservationDao;
         log.info("WebSocketServer初始化完成，静态服务对象已注入");
     }
 }
-/**
- * 连接建立成功调用的方法
- */
-// @OnOpen
-// public void onOpen(Session session, @PathParam("username") String username,
-// @PathParam("avatar") String avatar) {
-// sessionMap.put(session.getId(), session);
-// Dict user = Dict.create().set("name",
-// URLUtil.decode(Base64.decodeStr(username))).set("avatar",
-// URLUtil.decode(Base64.decodeStr(avatar)));
-// userMap.put(session.getId(), user);
-// log.info("userMap: {}", userMap);
-// log.info("[onOpen] 有新用户加入，session={}, 当前在线人数为：{}", session.getId(),
-// sessionMap.size());
-// sendAllMessage(JSONUtil.toJsonStr(Dict.create().set("users",
-// userMap.values()))); // 后台发送消息给所有的客户端
-// }
-// /**
-// * 连接关闭调用的方法
-// */
-// @OnClose
-// public void onClose(Session session) {
-// sessionMap.remove(session.getId());
-// userMap.remove(session.getId());
-// log.info("[onClose] 有一连接关闭，session={}, 当前在线人数为：{}", session.getId(),
-// sessionMap.size());
-// sendAllMessage(JSONUtil.toJsonStr(Dict.create().set("users",
-// userMap.values()))); // 后台发送消息给所有的客户端
-// }
-
-// /**
-// * 收到客户端消息后调用的方法
-// * 后台收到客户端发送过来的消息
-// * onMessage 是一个消息的中转站
-// * 接受 浏览器端 socket.send 发送过来的 json数据
-// * @param message 客户端发送过来的消息
-// */
-// @OnMessage
-// public void onMessage(String message, Session fromSession) {
-// log.info("服务端收到消息:{}", message);
-// ChatMessage chatMessage = JSONUtil.toBean(message, ChatMessage.class);
-// chatMessage.setTime(DateUtil.now());
-// // 存储数据到数据库
-// staticChatMessageService.add(chatMessage);
-// String jsonStr = JSONUtil.toJsonStr(chatMessage); // 处理后的消息体
-// this.sendAllMessage(jsonStr);
-// log.info("[onMessage] 发送消息：{}", jsonStr);
-// }
-
-// @OnError
-// public void onError(Session session, Throwable error) {
-// log.error("[onError] 发生错误", error);
-// }
-
-// /**
-// * 服务端发送消息给除了自己的其他客户端
-// */
-// private void sendMessage(Session fromSession, String message) {
-// sessionMap.values().forEach(session -> {
-// if (fromSession != session) {
-// log.info("服务端给客户端[{}]发送消息{}", session.getId(), message);
-// try {
-// session.getBasicRemote().sendText(message);
-// } catch (IOException e) {
-// log.error("服务端发送消息给客户端异常", e);
-// }
-// }
-// });
-// }
-
-// /**
-// * 服务端发送消息给所有客户端
-// */
-// private void sendAllMessage(String message) {
-// try {
-// for (Session session : sessionMap.values()) {
-// log.info("服务端给客户端[{}]发送消息{}", session.getId(), message);
-// session.getBasicRemote().sendText(message);
-// }
-// } catch (Exception e) {
-// log.error("服务端发送消息给客户端失败", e);
-// }
-// }
-
-// @Override
-// public void afterPropertiesSet() {
-// staticChatMessageService = chatMessageService;
-// }
