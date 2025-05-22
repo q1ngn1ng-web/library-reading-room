@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 import { getChatRoomList, getChatRoomDetail, createChatRoom, updateChatRoomStatus,
-  updateChatRoomChatStatus, deleteChatRoom } from '@/api/chatRoom'
+  updateChatRoomChatStatus, deleteChatRoom, getChatRoomHistory } from '@/api/chatRoom'
 
 const state = {
   chatRooms: [],
@@ -179,6 +179,24 @@ const actions = {
     commit('SET_CURRENT_ROOM', null)
     commit('SET_MESSAGES', [])
     commit('SET_ONLINE_USERS', [])
+  },
+
+  // 获取聊天室历史消息
+  async fetchChatHistory({ commit }, roomId) {
+    try {
+      const res = await getChatRoomHistory(roomId, {
+        limit: 20,  // 获取最近20条消息
+        offset: 0   // 从最新的消息开始
+      })
+      if (res.code === '0') {
+        commit('SET_MESSAGES', res.data)
+        return res.data
+      }
+      return []
+    } catch (error) {
+      console.error('获取聊天室历史消息失败:', error)
+      return []
+    }
   }
 }
 

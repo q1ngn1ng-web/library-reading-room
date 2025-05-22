@@ -424,59 +424,14 @@ export default {
       this.loading = true
       console.log('正在获取座位列表，楼层ID:', this.selectedFloor, '类型:', typeof this.selectedFloor)
 
-      // 尝试直接从seats/list接口获取座位数据
-      const endpoint = `/seats/list?roomId=${this.selectedFloor}`
+      // 直接使用seats/status接口获取座位数据
+      const endpoint = `/seats/status?roomId=${this.selectedFloor}`
       console.log('调用API:', endpoint)
 
       request.get(endpoint)
         .then(res => {
           this.loading = false
           console.log('座位API响应:', res)
-
-          if (res.code === '0') {
-            // 数据标准化处理
-            this.allSeats = (res.data || []).map(seat => ({
-              id: seat.id,
-              roomId: seat.roomId || this.selectedFloor,
-              seatNumber: seat.seatNumber || seat.number || `座位${seat.id}`,
-              status: typeof seat.status === 'number' ? seat.status : 0,
-              updateTime: seat.updateTime || null,
-              lastReservation: seat.lastReservation || null
-            }))
-
-            console.log('获取到座位列表:', this.allSeats)
-            this.totalSeats = this.allSeats.length
-
-            if (this.allSeats.length === 0) {
-              console.log('当前楼层无座位数据，尝试备用API')
-              // 如果没有数据，尝试备用API
-              this.fetchSeatsAlternative()
-            }
-          } else {
-            // 如果API调用失败，尝试创建示例座位数据
-            console.error('获取座位列表失败, 尝试获取备用API:', res.msg)
-            this.fetchSeatsAlternative()
-          }
-        })
-        .catch(err => {
-          this.loading = false
-          console.error('获取座位列表失败，尝试备用API', err)
-          this.fetchSeatsAlternative()
-        })
-    },
-
-    // 备用方法：从status接口获取座位数据
-    fetchSeatsAlternative() {
-      this.loading = true
-
-      // 尝试原来的API端点
-      const endpoint = `/seats/status?roomId=${this.selectedFloor}`
-      console.log('调用备用API:', endpoint)
-
-      request.get(endpoint)
-        .then(res => {
-          this.loading = false
-          console.log('备用座位API响应:', res)
 
           if (res.code === '0' && res.data && res.data.length > 0) {
             // 数据标准化处理
@@ -489,16 +444,17 @@ export default {
               lastReservation: seat.lastReservation || null
             }))
 
-            console.log('备用API获取到座位列表:', this.allSeats)
+            console.log('获取到座位列表:', this.allSeats)
             this.totalSeats = this.allSeats.length
           } else {
-            console.error('备用API也未能获取座位数据，创建模拟数据')
+            // 如果API调用失败或没有数据，创建示例座位数据
+            console.error('获取座位列表失败或无数据，创建模拟数据:', res.msg)
             this.createDemoSeats()
           }
         })
         .catch(err => {
           this.loading = false
-          console.error('备用API也失败，创建模拟数据', err)
+          console.error('获取座位列表失败，创建模拟数据', err)
           this.createDemoSeats()
         })
     },

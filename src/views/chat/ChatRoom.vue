@@ -155,22 +155,10 @@ export default {
       'fetchChatRoom',
       'receiveMessage',
       'updateOnlineUsers',
-      'clearCurrentRoomData'
+      'clearCurrentRoomData',
+      'fetchChatHistory'
     ]),
-    // 添加调试方法，用于检查聊天室状态
-    // logRoomState() {
-    //   if (this.currentRoom) {
-    //     console.log('聊天室状态详情:', {
-    //       id: this.currentRoom.id,
-    //       isAvailable: this.currentRoom.isAvailable,
-    //       is_available: this.currentRoom.is_available,
-    //       isChat: this.currentRoom.isChat,
-    //       is_chat: this.currentRoom.is_chat,
-    //       可发送消息: (this.currentRoom.isAvailable && this.currentRoom.isChat),
-    //       检查条件1: (this.currentRoom.isAvailable && this.currentRoom.isChat),
-    //       检查条件2: (this.currentRoom.is_available && this.currentRoom.is_chat)
-    //     });
-    //   },
+
     handleWebSocketError(errorMsg) {
       this.connectionError = true;
       this.$message.error(errorMsg || 'WebSocket连接失败，请刷新页面重试');
@@ -237,8 +225,7 @@ export default {
     },
     initWebSocket() {
       if (this.wsService) {
-        this.wsService.disconnect();
-      }
+        this.wsService.disconnect();      }
 
       this.user = JSON.parse(localStorage.getItem('user') || '{}');
       if (!this.user || !this.user.username) {
@@ -246,20 +233,16 @@ export default {
         this.$router.push('/login');
         return;
       }
-
       // 确保我们得到用户ID
       const userId = this.user.id;
       if (!userId) {
         console.warn('用户ID不存在，可能会导致数据库中user_id为0');
       }
-
       this.connectionError = false;
       this.isConnected = false;
-
       // 获取当前预约的座位信息
       const activeReservation = this.getActiveReservation;
       let displayName = this.user.nickname || this.user.username;
-
       // 如果有活跃预约，添加座位前缀
       if (activeReservation && activeReservation.floorNumber && activeReservation.seatNumber) {
         displayName = `${activeReservation.floorNumber}层${activeReservation.seatNumber}号 ${this.user.nickname || this.user.username}`;
@@ -311,13 +294,11 @@ export default {
           return false
         }
 
-        // 添加调试输出
-        // console.log('聊天室数据加载完成:', this.currentRoom);
-        // this.logRoomState();
+        // 加载历史消息
+        await this.fetchChatHistory(this.roomId)
 
         return true
       } catch (error) {
-        // console.error('加载聊天室信息失败:', error)
         this.$message.error('加载聊天室信息失败')
         return false
       }
@@ -510,25 +491,32 @@ export default {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .message-item {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  clear: both;
+  width: 100%;
 }
 
 .message-sender {
   display: flex;
-  align-items: center;
-  margin-bottom: 5px;
+  align-items: flex-start;
+  margin-bottom: 8px;
 }
 
 .message-info {
   margin-left: 10px;
+  flex: 1;
 }
 
 .sender-name {
   font-weight: bold;
   font-size: 14px;
+  line-height: 1.2;
+  margin-bottom: 4px;
 }
 
 .message-time {
@@ -537,23 +525,13 @@ export default {
 }
 
 .message-content {
-  padding: 10px 15px;
+  padding: 12px 16px;
   background-color: #f2f6fc;
   border-radius: 4px;
   word-break: break-word;
   max-width: 80%;
   margin-left: 46px;
   position: relative;
-}
-
-.message-content:before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 15px;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 6px solid #f2f6fc;
 }
 
 .my-message .message-sender {
@@ -567,22 +545,25 @@ export default {
 }
 
 .my-message .message-content {
+  float: right;
   margin-left: 0;
   margin-right: 46px;
   background-color: #ecf5ff;
-  float: right;
 }
 
 .my-message .message-content:before {
   left: auto;
   right: 15px;
-  border-bottom-color: #ecf5ff;
 }
 
 .no-messages {
   text-align: center;
   padding: 30px 0;
   color: #909399;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .message-input-container {

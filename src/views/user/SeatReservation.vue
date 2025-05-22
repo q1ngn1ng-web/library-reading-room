@@ -95,7 +95,7 @@
         :class="getSeatClass(seat)"
         @click="handleSeatClick(seat)"
       >
-        <div class="seat-number">{{ seat.seatNumber }}</div>
+        <div class="seat-number">{{ seat.seatNumber || seat.number }}</div>
       </div>
     </div>
 
@@ -108,7 +108,7 @@
       <div v-if="selectedSeat" class="seat-detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="座位号">
-            {{ selectedSeat.seatNumber || selectedSeat.number }} ({{ selectedSeat.roomId || selectedSeat.room_id }}楼)
+            {{ selectedSeat.seatNumber || selectedSeat.number }} ({{ selectedSeat.roomId || selectedSeat.room_id }}号)
           </el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusTagType(selectedSeat.status)">
@@ -120,6 +120,9 @@
           </el-descriptions-item>
           <el-descriptions-item label="预约人" v-if="selectedSeat.userId || selectedSeat.user_id">
             {{ selectedSeat.userName || selectedSeat.user_name || selectedSeat.userId || selectedSeat.user_id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="下次可用时间" v-if="isSeatReservedOrInUse(selectedSeat)">
+            {{ formatNextAvailableTime(selectedSeat) }}
           </el-descriptions-item>
         </el-descriptions>
 
@@ -385,11 +388,11 @@ export default {
       // 嵌套结构
       if (this.activeReservation.reservation) {
         const status = this.activeReservation.reservation.status;
-        return status === 'checked_in' || status === 2;
+        return status === 'checked_in' || status === 5;
       }
 
       // 扁平结构
-      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 2;
+      return this.activeReservation.status === 'checked_in' || this.activeReservation.status === 5;
     },
 
     // 是否显示取消按钮
@@ -446,8 +449,30 @@ export default {
     ]),
 
     // 处理座位点击
-    handleSeatClick(seat) {
+    async handleSeatClick(seat) {
       this.selectedSeat = seat
+
+      // 如果是已预约或使用中的座位，尝试获取更多预约信息
+      if (this.isSeatReservedOrInUse(seat) && seat.reservationId) {
+        try {
+          // 这里假设有一个获取预约详情的API
+          // 如果没有实际的API，可以注释掉此部分
+          /*
+          this.loading = true;
+          const result = await this.$axios.get(`/reservation/${seat.reservationId}`);
+          if (result.data && result.data.code === '0') {
+            this.selectedSeat = {
+              ...seat,
+              reservationInfo: result.data.data
+            };
+          }
+          */
+        } catch (error) {
+          console.error('获取预约详情失败:', error);
+        } finally {
+          this.loading = false;
+        }
+      }
 
       // 显示座位详情对话框
       this.showSeatDetailDialog = true
@@ -529,19 +554,16 @@ export default {
         this.$message.warning('请选择预约时间段');
         return;
       }
-
       // 验证所选时间是否在当前时间之后
       const isValid = this.validateReservationTime();
       if (!isValid) {
-        this.$message.warning('预约时间必须在当前时间之后');
+        this.$message.warning('预约开始时间必须在当前时间之后');
         return;
       }
-
       if (!this.currentUser || !this.currentUser.id) {
         this.$message.error('用户信息不完整，请重新登录');
         return;
       }
-
       this.submitting = true
       try {
         // 构建预约数据 - 使用驼峰命名法匹配后端实体类字段
@@ -699,6 +721,63 @@ export default {
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const day = date.getDate().toString().padStart(2, '0');
       return `${year}-${month}-${day}`;
+    },
+
+    formatNextAvailableTime(seat) {
+      if (!seat) return '未知';
+
+      // 尝试获取结束时间
+      const endTimeStr = seat.endTime || seat.end_time;
+      if (!endTimeStr) {
+        // 如果没有结束时间，尝试从reservationInfo获取
+        if (seat.reservationInfo && seat.reservationInfo.endTime) {
+          return formatDateTime(new Date(seat.reservationInfo.endTime), 'yyyy-MM-dd HH:mm');
+        }
+        return '未知';
+      }
+
+      // 格式化结束时间
+      const endTime = new Date(endTimeStr);
+      const formattedTime = formatDateTime(endTime, 'yyyy-MM-dd HH:mm');
+
+      const now = new Date();
+      const diff = endTime.getTime() - now.getTime();
+
+      // 如果预约结束时间已过但座位还未更新状态
+      if (diff <= 0) {
+        return '预期已可用';
+      }
+
+      // 计算剩余时间（小时和分钟）
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      let timeLeft = '';
+      if (hours > 0) {
+        timeLeft = `约${hours}小时${minutes > 0 ? minutes + '分钟' : ''}后可用`;
+      } else {
+        timeLeft = `约${minutes}分钟后可用`;
+      }
+
+      return `${formattedTime} (${timeLeft})`;
+    },
+
+    isSeatReservedOrInUse(seat) {
+      if (!seat) return false;
+
+      // 处理数字状态码
+      if (typeof seat.status === 'number') {
+        // 通常1=预约成功，2=使用中
+        return seat.status === 1 || seat.status === 2 || seat.status === 5;
+      }
+
+      // 处理字符串状态码
+      if (typeof seat.status === 'string') {
+        const status = seat.status.toLowerCase();
+        return status === 'reserved' || status === 'checked_in' || status === 'occupied' || status === 'in_use';
+      }
+
+      return false;
     }
   }
 }

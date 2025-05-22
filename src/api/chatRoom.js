@@ -66,3 +66,13 @@ export function deleteChatRoom(id) {
     role: 'admin'  // 删除聊天室通常是管理员操作
   })
 }
+
+// 获取聊天室历史消息
+export function getChatRoomHistory(roomId, params) {
+  return request({
+    url: `/chat/history/${roomId}`,
+    method: 'get',
+    role: 'user',
+    params
+  })
+}
