@@ -134,7 +134,6 @@ public class ReservationController {
 
     /**
      * Get reservation history
-     *
      * @param page   Page number
      * @param size   Page size
      * @param status Optional status filter
@@ -163,7 +162,6 @@ public class ReservationController {
 
     /**
      * Search reservations (admin only)
-     *
      * @param params Search parameters
      * @param page   Page number
      * @param size   Page size

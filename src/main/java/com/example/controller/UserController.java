@@ -44,10 +44,23 @@ public class UserController {
 
     @PostMapping("/password")
     public Result updatePassword(@RequestBody User user) {
+
+        // 验证原密码是否为空
+        if (ObjectUtil.isNull(user.getPassword()) || user.getPassword().trim().isEmpty()) {
+            return Result.error("原密码不能为空");
+        }
+
+        // 验证新密码是否为空
+        if (ObjectUtil.isNull(user.getNewPassword()) || user.getNewPassword().trim().isEmpty()) {
+            return Result.error("新密码不能为空");
+        }
+
         User currentUser = JwtTokenUtils.getCurrentUser();
+
         if (ObjectUtil.isNull(currentUser)) {
             return Result.error("用户获取不到，token验证失效，请重新登陆");
         }
+
         if (!user.getPassword().equals(currentUser.getPassword())) {
             return Result.error("原密码输入错误");
         }
@@ -58,7 +71,7 @@ public class UserController {
 
     @PostMapping("/register")
     public Result register(@RequestBody User user) {
-        System.out.println("前端发送过来的User注册数据:"+user);
+        System.out.println("前端发送过来的User注册数据:" + user);
         userService.add(user);
         return Result.success();
     }
@@ -89,5 +102,11 @@ public class UserController {
     public Result delete(@PathVariable Integer id) {
         userService.delete(id);
         return Result.success();
+    }
+
+    @PutMapping("/{id}/password")
+    public Result resetPassword(@PathVariable Integer id) {
+        String newPassword = userService.resetPassword(id);
+        return Result.success(newPassword);
     }
 }

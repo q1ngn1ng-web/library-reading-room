@@ -100,15 +100,6 @@ public class WebSocketServer implements InitializingBean {
                     session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "无有效预约，无法进入聊天室"));
                     return;
                 }
-
-                // 检查预约的座位是否在这个聊天室所在的楼层
-                // 注意：这里假设房间ID与楼层ID相关，可能需要根据实际业务逻辑调整
-                if (!reservation.getSeatId().equals(roomId)) {
-                    log.info("用户 {} 预约的座位不在聊天室 {} 所在楼层", decodedUserId, roomId);
-                    session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "预约与聊天室不匹配"));
-                    return;
-                }
-
                 log.info("用户 {} 预约验证通过，允许访问聊天室 {}", decodedUserId, roomId);
             } catch (NumberFormatException e) {
                 log.error("用户ID格式错误: {}", decodedUserId, e);

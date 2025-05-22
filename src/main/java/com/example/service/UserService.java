@@ -89,4 +89,25 @@ public class UserService {
     public User findById(Integer id) {
         return userDao.selectByPrimaryKey(id);
     }
+
+    /**
+     * 重置用户密码
+     *
+     * @param id 用户ID
+     * @return 新密码
+     */
+    public String resetPassword(Integer id) {
+        // 生成新的随机密码
+        String newPassword = "123456"; // 这里可以改成更复杂的随机密码生成逻辑
+
+        // 创建用户对象并设置新密码
+        User user = new User();
+        user.setId(id);
+        user.setPassword(newPassword);
+
+        // 更新数据库中的密码
+        userDao.updateByPrimaryKeySelective(user);
+
+        return newPassword;
+    }
 }
