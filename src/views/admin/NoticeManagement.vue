@@ -177,7 +177,7 @@ export default {
           this.$message.error(res.msg || '获取通知列表失败')
         }
       }).catch(err => {
-        console.error('获取通知列表失败', err)
+        //console.error('获取通知列表失败', err)
         this.$message.error('获取通知列表失败')
       }).finally(() => {
         this.loading = false
@@ -242,7 +242,7 @@ export default {
             this.$message.error(res.msg || '删除失败')
           }
         }).catch(err => {
-          console.error('删除通知失败', err)
+          //console.error('删除通知失败', err)
           this.$message.error('删除通知失败')
         })
       }).catch(() => {})
@@ -260,7 +260,7 @@ export default {
               this.$message.error(res.msg || (this.form.id ? '更新失败' : '添加失败'))
             }
           }).catch(err => {
-            console.error(this.form.id ? '更新通知失败' : '添加通知失败', err)
+            //console.error(this.form.id ? '更新通知失败' : '添加通知失败', err)
             this.$message.error(this.form.id ? '更新通知失败' : '添加通知失败')
           })
         } else {

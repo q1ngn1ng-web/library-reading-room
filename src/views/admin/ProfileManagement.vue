@@ -14,7 +14,7 @@
 
           <el-upload
             class="avatar-uploader"
-            action="/api/admin/avatar"
+            action="/admin/avatar"
             :headers="uploadHeaders"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
@@ -181,7 +181,7 @@ export default {
               this.$message.error(res.msg || '更新失败')
             }
           }).catch(err => {
-            console.error('更新个人信息失败', err)
+            //console.error('更新个人信息失败', err)
             this.$message.error('更新个人信息失败')
           })
         } else {
@@ -205,7 +205,7 @@ export default {
               this.$message.error(res.msg || '密码修改失败')
             }
           }).catch(err => {
-            console.error('密码修改失败', err)
+            //console.error('密码修改失败', err)
             this.$message.error('密码修改失败')
           })
         } else {

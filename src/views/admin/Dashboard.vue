@@ -214,7 +214,7 @@ export default {
           this.$message.error(res.msg || '获取仪表盘数据失败')
         }
       }).catch(err => {
-        console.error('获取仪表盘数据失败', err)
+        //console.error('获取仪表盘数据失败', err)
         this.$message.error('获取仪表盘数据失败')
       }).finally(() => {
         this.loading = false

@@ -57,11 +57,11 @@ const mutations = {
       // 设置聊天室访问权限
       state.chatAvailable = hasValidStatus || hasValidNestedStatus;
 
-      console.log('更新预约信息和聊天室权限:', {
-        状态: reservation.status,
-        嵌套状态: nestedStatus,
-        可访问聊天室: state.chatAvailable
-      });
+      // console.log('更新预约信息和聊天室权限:', {
+      //   状态: reservation.status,
+      //   嵌套状态: nestedStatus,
+      //   可访问聊天室: state.chatAvailable
+      // });
 
       localStorage.setItem('activeReservation', JSON.stringify(reservation))
     } else {
@@ -89,12 +89,12 @@ const actions = {
     try {
       // 获取楼层信息
       const floorsResponse = await getFloors()
-      console.log('获取的楼层信息:', floorsResponse)
+      // console.log('获取的楼层信息:', floorsResponse)
 
       if (floorsResponse.code === '0') {
         const floors = floorsResponse.data
-        console.log('楼层数量:', floors.length, '楼层数据:', floors)
-
+        // console.log('楼层数量:', floors.length, '楼层数据:', floors)
+//
         // 设置总楼层数
         commit('SET_TOTAL_FLOORS', floors.length)
         commit('SET_CURRENT_FLOOR', floorNumber || 1)
@@ -105,7 +105,7 @@ const actions = {
 
       return true
     } catch (error) {
-      console.error('初始化楼层数据失败:', error)
+      // console.error('初始化楼层数据失败:', error)
       return false
     }
   },
@@ -147,7 +147,7 @@ const actions = {
         return []
       }
     } catch (error) {
-      console.error('获取座位状态失败:', error)
+      // console.error('获取座位状态失败:', error)
       return []
     }
   },
@@ -166,7 +166,7 @@ const actions = {
       }
       return null
     } catch (error) {
-      console.error('获取座位详情失败:', error)
+      // console.error('获取座位详情失败:', error)
       return null
     }
   },
@@ -215,7 +215,7 @@ const actions = {
         message: response.msg || '预约失败'
       }
     } catch (error) {
-      console.error('预约座位失败:', error)
+      // console.error('预约座位失败:', error)
       return {
         success: false,
         message: '预约请求出错'
@@ -370,7 +370,7 @@ const actions = {
         message: response.msg || '签到失败'
       }
     } catch (error) {
-      console.error('签到失败:', error)
+      // console.error('签到失败:', error)
       return {
         success: false,
         message: '签到请求出错'
@@ -403,7 +403,7 @@ const actions = {
               seatNumber: state.activeReservation.seatNumber,
               updates: { status: 0 } // 使用状态值0表示"可预约"
             })
-            console.log('已更新座位状态为"可预约"')
+            // console.log('已更新座位状态为"可预约"')
           }
         }
 
@@ -433,7 +433,7 @@ const actions = {
         message: response.msg || '退座失败'
       }
     } catch (error) {
-      console.error('签到失败:', error)
+      // console.error('签到失败:', error)
       return {
         success: true
       }
@@ -558,7 +558,7 @@ const actions = {
                 seatNumber: processedReservation.seatNumber,
                 updates: { status: processedReservation.status }
               });
-              console.log(`已同步座位状态为: ${processedReservation.status}`);
+              // console.log(`已同步座位状态为: ${processedReservation.status}`);
             }
           }
 
@@ -574,7 +574,7 @@ const actions = {
 
       return null;
     } catch (error) {
-      console.error('获取当前预约失败:', error);
+      // console.error('获取当前预约失败:', error);
       commit('SET_ACTIVE_RESERVATION', null);
       localStorage.removeItem('activeReservation');
       return null;
@@ -608,16 +608,16 @@ const actions = {
             timeoutAt = new Date(startTime.getTime() + 30 * 60 * 1000);
           }
 
-          console.log('超时检查:', {
-            currentTime,
-            timeoutAt,
-            isReserved,
-            reservation
-          });
+          // console.log('超时检查:', {
+          //   currentTime,
+          //   timeoutAt,
+          //   isReserved,
+          //   reservation
+          // });
 
           // 如果处于预约状态且已超过最晚签到时间，则自动取消预约
           if (isReserved && timeoutAt && currentTime > timeoutAt) {
-            console.log('预约已超时，自动取消:', reservation.reservationId);
+            // console.log('预约已超时，自动取消:', reservation.reservationId);
 
             // 调用接口取消超时预约
             const response = await cancelReservation(reservation.reservationId, 'timeout');
@@ -649,7 +649,7 @@ const actions = {
               // 在前端弹出通知
               Message.warning('您的预约已超时自动取消');
             } else {
-              console.error('自动取消预约失败:', response);
+              // console.error('自动取消预约失败:', response);
             }
           } else {
             // 调用后端检查接口
@@ -681,7 +681,7 @@ const actions = {
             }
           }
         } catch (error) {
-          console.error('检查超时失败:', error);
+          // console.error('检查超时失败:', error);
         }
       }
     }, 60000); // 每分钟检查一次
@@ -760,13 +760,13 @@ const getters = {
     const hasValidStatus = validStatuses.includes(Number(mainStatus)) ||
                          validStatuses.includes(Number(nestedStatus));
 
-    console.log('聊天室访问权限检查:', {
-      activeReservation: !!state.activeReservation,
-      mainStatus,
-      nestedStatus,
-      hasValidStatus,
-      chatAvailable: state.chatAvailable
-    });
+    // console.log('聊天室访问权限检查:', {
+    //   activeReservation: !!state.activeReservation,
+    //   mainStatus,
+    //   nestedStatus,
+    //   hasValidStatus,
+    //   chatAvailable: state.chatAvailable
+    // });
 
     return hasValidStatus;
   },

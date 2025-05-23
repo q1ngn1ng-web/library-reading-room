@@ -53,7 +53,7 @@ request.interceptors.response.use(
     },
     error => {
         // 增强错误处理
-        console.error('API请求错误:', error);
+        // console.error('API请求错误:', error);
 
         // 检查错误类型
         if (error.message === 'Network Error') {

@@ -235,7 +235,7 @@ export default {
           this.$message.error(res.msg || '获取聊天室列表失败')
         }
       }).catch(err => {
-        console.error('获取聊天室列表失败', err)
+        //console.error('获取聊天室列表失败', err)
         this.$message.error('获取聊天室列表失败')
       }).finally(() => {
         this.loading = false
@@ -270,7 +270,7 @@ export default {
               this.$message.error(res.msg || '创建聊天室失败')
             }
           }).catch(err => {
-            console.error('创建聊天室失败', err)
+            //console.error('创建聊天室失败', err)
             this.$message.error('创建聊天室失败')
           })
         } else {
@@ -298,7 +298,7 @@ export default {
             this.$message.error(res.msg || `${actionText}失败`)
           }
         }).catch(err => {
-          console.error(`${actionText}聊天室失败`, err)
+          //console.error(`${actionText}聊天室失败`, err)
           this.$message.error(`${actionText}聊天室失败`)
         })
       }).catch(() => {})
@@ -323,7 +323,7 @@ export default {
             this.$message.error(res.msg || `${actionText}失败`)
           }
         }).catch(err => {
-          console.error(`聊天室${actionText}失败`, err)
+          //console.error(`聊天室${actionText}失败`, err)
           this.$message.error(`聊天室${actionText}失败`)
         })
       }).catch(() => {})
@@ -344,7 +344,7 @@ export default {
             this.$message.error(res.msg || '删除失败')
           }
         }).catch(err => {
-          console.error('删除聊天室失败', err)
+          //console.error('删除聊天室失败', err)
           this.$message.error('删除聊天室失败')
         })
       }).catch(() => {})
@@ -369,7 +369,7 @@ export default {
           this.$message.error(res.msg || '获取聊天室用户列表失败')
         }
       }).catch(err => {
-        console.error('获取聊天室用户列表失败', err)
+        //console.error('获取聊天室用户列表失败', err)
         this.$message.error('获取聊天室用户列表失败')
       }).finally(() => {
         this.userLoading = false
@@ -395,7 +395,7 @@ export default {
             this.$message.error(res.msg || `${actionText}失败`)
           }
         }).catch(err => {
-          console.error(`用户${actionText}失败`, err)
+          //console.error(`用户${actionText}失败`, err)
           this.$message.error(`用户${actionText}失败`)
         })
       }).catch(() => {})

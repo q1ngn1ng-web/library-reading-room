@@ -12,9 +12,9 @@
       </el-form-item>
       <el-form-item label="角色">
         <el-select v-model="searchForm.role" placeholder="请选择角色" clearable>
-          <el-option label="管理员" value="ADMIN"></el-option>
-          <el-option label="教师" value="TEACHER"></el-option>
-          <el-option label="学生" value="STUDENT"></el-option>
+          <el-option label="管理员" value="admin"></el-option>
+          <el-option label="教师" value="teacher"></el-option>
+          <el-option label="学生" value="student"></el-option>
         </el-select>
       </el-form-item>
       <el-form-item label="电话">
@@ -38,8 +38,13 @@
         width="60">
       </el-table-column>
       <el-table-column
-        prop="name"
+        prop="username"
         label="用户名"
+        width="120">
+      </el-table-column>
+      <el-table-column
+        prop="nickname"
+        label="昵称"
         width="120">
       </el-table-column>
       <el-table-column
@@ -114,8 +119,8 @@
         :rules="rules"
         ref="form"
         label-width="80px">
-        <el-form-item label="用户名" prop="name">
-          <el-input v-model="form.name"></el-input>
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username"></el-input>
         </el-form-item>
         <el-form-item label="密码" prop="password" v-if="!form.id">
           <el-input v-model="form.password" type="password"></el-input>
@@ -134,15 +139,15 @@
         </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" placeholder="请选择角色">
-            <el-option label="管理员" value="ADMIN"></el-option>
-            <el-option label="教师" value="TEACHER"></el-option>
-            <el-option label="学生" value="STUDENT"></el-option>
+            <el-option label="管理员" value="admin"></el-option>
+            <el-option label="教师" value="teacher"></el-option>
+            <el-option label="学生" value="student"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="头像">
           <el-upload
             class="avatar-uploader"
-            action="/api/file/upload"
+            action="/file/upload"
             :headers="uploadHeaders"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
@@ -186,7 +191,8 @@ export default {
       // 表单
       form: {
         id: null,
-        name: '',
+        username: '',
+        nickname: '零零柒',
         password: '',
         sex: '男',
         age: 20,
@@ -196,7 +202,7 @@ export default {
       },
       // 表单校验规则
       rules: {
-        name: [
+        username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
           { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
         ],
@@ -211,7 +217,6 @@ export default {
           { required: true, message: '请输入年龄', trigger: 'blur' }
         ],
         phone: [
-          { required: true, message: '请输入电话', trigger: 'blur' },
           { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
         ],
         role: [
@@ -234,12 +239,15 @@ export default {
       this.loading = true
       request.get('/user/search', {
         params: {
-          page: this.currentPage,
-          size: this.pageSize,
-          ...this.searchForm,
+          pageNum: this.currentPage,
+          pageSize: this.pageSize,
+          name: this.searchForm.name,
+          role: this.searchForm.role,
+          phone: this.searchForm.phone
         },
         role: 'admin'
       }).then(res => {
+        this.loading = false
         if (res.code === '0') {
           this.tableData = res.data.list || []
           this.total = res.data.total || 0
@@ -247,10 +255,9 @@ export default {
           this.$message.error(res.msg || '获取用户列表失败')
         }
       }).catch(err => {
-        console.error('获取用户列表失败', err)
-        this.$message.error('获取用户列表失败')
-      }).finally(() => {
         this.loading = false
+        console.error('获取用户列表失败', err)
+        this.$message.error('获取用户列表失败，请检查网络连接')
       })
     },
     // 搜索
@@ -282,7 +289,8 @@ export default {
       this.dialogTitle = '添加用户'
       this.form = {
         id: null,
-        name: '',
+        username: '',
+        nickname: '零零柒',
         password: '',
         sex: '男',
         age: 20,
@@ -308,7 +316,11 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        request.delete(`/user/${row.id}`, { role: 'admin' }).then(res => {
+        request({
+          url: `/user/${row.id}`,
+          method: 'delete',
+          role: 'admin'
+        }).then(res => {
           if (res.code === '0') {
             this.$message.success('删除成功')
             this.fetchUsers()
@@ -328,7 +340,7 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        request.put(`/user/${row.id}/resetPassword`, null, { role: 'admin' }).then(res => {
+        request.put(`/user/${row.id}/password`, null, { role: 'admin' }).then(res => {
           if (res.code === '0') {
             this.$message.success(`密码重置成功，新密码为: ${res.data}`)
           } else {
@@ -384,7 +396,7 @@ export default {
     },
     // 获取角色类型（用于标签颜色）
     getRoleType(role) {
-      switch(role) {
+      switch(role?.toUpperCase()) {
         case 'ADMIN':
           return 'danger'
         case 'TEACHER':
@@ -397,7 +409,7 @@ export default {
     },
     // 获取角色名称
     getRoleName(role) {
-      switch(role) {
+      switch(role?.toUpperCase()) {
         case 'ADMIN':
           return '管理员'
         case 'TEACHER':

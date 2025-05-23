@@ -29,17 +29,17 @@ const mutations = {
       // 优先使用已映射的 is_available 字段
       if (typeof mappedRoom.is_available === 'string') {
         isAvailable = mappedRoom.is_available === 'true' || mappedRoom.is_available === '1';
-        console.log(`聊天室 ${room.id} is_available为字符串: "${mappedRoom.is_available}", 转换为:`, isAvailable);
+        // console.log(`聊天室 ${room.id} is_available为字符串: "${mappedRoom.is_available}", 转换为:`, isAvailable);
       }
       // 如果是数字，1为true，0为false
       else if (typeof mappedRoom.is_available === 'number') {
         isAvailable = mappedRoom.is_available === 1;
-        console.log(`聊天室 ${room.id} is_available为数字: ${mappedRoom.is_available}, 转换为:`, isAvailable);
+        // console.log(`聊天室 ${room.id} is_available为数字: ${mappedRoom.is_available}, 转换为:`, isAvailable);
       }
       // 如果已经是布尔值，直接使用
       else {
         isAvailable = !!mappedRoom.is_available;
-        console.log(`聊天室 ${room.id} is_available为其他类型: ${mappedRoom.is_available}, 转换为:`, isAvailable);
+        // console.log(`聊天室 ${room.id} is_available为其他类型: ${mappedRoom.is_available}, 转换为:`, isAvailable);
       }
 
       return {
@@ -51,7 +51,7 @@ const mutations = {
       };
     });
 
-    console.log('处理后的聊天室数据:', state.chatRooms);
+    // console.log('处理后的聊天室数据:', state.chatRooms);
   },
   SET_CURRENT_ROOM(state, room) {
     if (room) {
@@ -79,7 +79,7 @@ const actions = {
   async fetchChatRooms({ commit }) {
     try {
       const res = await getChatRoomList()
-      console.log('API 返回的聊天室原始数据:', res);
+      // console.log('API 返回的聊天室原始数据:', res);
 
       if (res.code === '0') {
         console.log('聊天室数据详情:', JSON.stringify(res.data, null, 2));
@@ -100,7 +100,7 @@ const actions = {
       }
       return []
     } catch (error) {
-      console.error('获取聊天室列表失败:', error)
+      // console.error('获取聊天室列表失败:', error)
       return []
     }
   },
@@ -115,7 +115,7 @@ const actions = {
       }
       return null
     } catch (error) {
-      console.error('获取聊天室信息失败:', error)
+      // console.error('获取聊天室信息失败:', error)
       return null
     }
   },
@@ -126,7 +126,7 @@ const actions = {
       const res = await createChatRoom(roomData)
       return res
     } catch (error) {
-      console.error('创建聊天室失败:', error)
+      // console.error('创建聊天室失败:', error)
       return { code: '-1', msg: '创建聊天室失败' }
     }
   },
@@ -137,7 +137,7 @@ const actions = {
       const res = await updateChatRoomStatus(roomId, isAvailable)
       return res
     } catch (error) {
-      console.error('更新聊天室状态失败:', error)
+      // console.error('更新聊天室状态失败:', error)
       return { code: '-1', msg: '更新聊天室状态失败' }
     }
   },
@@ -148,7 +148,7 @@ const actions = {
       const res = await updateChatRoomChatStatus(roomId, isChat)
       return res
     } catch (error) {
-      console.error('更新聊天室禁言状态失败:', error)
+      // console.error('更新聊天室禁言状态失败:', error)
       return { code: '-1', msg: '更新聊天室禁言状态失败' }
     }
   },
@@ -159,7 +159,7 @@ const actions = {
       const res = await deleteChatRoom(roomId)
       return res
     } catch (error) {
-      console.error('删除聊天室失败:', error)
+      // console.error('删除聊天室失败:', error)
       return { code: '-1', msg: '删除聊天室失败' }
     }
   },
@@ -194,7 +194,7 @@ const actions = {
       }
       return []
     } catch (error) {
-      console.error('获取聊天室历史消息失败:', error)
+      // console.error('获取聊天室历史消息失败:', error)
       return []
     }
   }

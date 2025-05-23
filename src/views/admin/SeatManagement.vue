@@ -348,16 +348,16 @@ export default {
               floor: floor.floor || `${floor.id}层`
             }));
 
-            console.log('获取到楼层列表:', this.floors)
+            // //console.log('获取到楼层列表:', this.floors)
 
             if (this.floors.length > 0) {
               // 存储所有楼层ID，以便于调试
               const allFloorIds = this.floors.map(f => f.roomId || f.id);
-              console.log('所有楼层ID:', allFloorIds);
+              //console.log('所有楼层ID:', allFloorIds);
 
               // 默认选择第一个楼层
               this.selectedFloor = this.floors[0].roomId || this.floors[0].id;
-              console.log('默认选择楼层ID:', this.selectedFloor);
+              //console.log('默认选择楼层ID:', this.selectedFloor);
 
               // 加载选中楼层的座位
               this.fetchSeats();
@@ -370,14 +370,14 @@ export default {
         })
         .catch(err => {
           this.loading = false
-          console.error('获取楼层列表失败', err)
+          //console.error('获取楼层列表失败', err)
           this.$message.error('获取楼层列表失败，请检查网络连接')
         })
     },
 
     // 楼层切换
     handleFloorChange(value) {
-      console.log('切换楼层，旧值:', this.selectedFloor, '新值:', value)
+      //console.log('切换楼层，旧值:', this.selectedFloor, '新值:', value)
 
       // 确保value是有效值
       if (!value) {
@@ -388,7 +388,7 @@ export default {
       // 在房间列表中查找此楼层ID
       const floorExists = this.floors.some(f => (f.roomId || f.id) == value);
       if (!floorExists) {
-        console.warn('选择的楼层ID不在获取的楼层列表中:', value);
+        //console.warn('选择的楼层ID不在获取的楼层列表中:', value);
       }
 
       this.selectedFloor = value;
@@ -422,16 +422,16 @@ export default {
       }
 
       this.loading = true
-      console.log('正在获取座位列表，楼层ID:', this.selectedFloor, '类型:', typeof this.selectedFloor)
+      //console.log('正在获取座位列表，楼层ID:', this.selectedFloor, '类型:', typeof this.selectedFloor)
 
       // 直接使用seats/status接口获取座位数据
       const endpoint = `/seats/status?roomId=${this.selectedFloor}`
-      console.log('调用API:', endpoint)
+      //console.log('调用API:', endpoint)
 
       request.get(endpoint)
         .then(res => {
           this.loading = false
-          console.log('座位API响应:', res)
+          // console.log('座位API响应:', res)
 
           if (res.code === '0' && res.data && res.data.length > 0) {
             // 数据标准化处理
@@ -444,24 +444,24 @@ export default {
               lastReservation: seat.lastReservation || null
             }))
 
-            console.log('获取到座位列表:', this.allSeats)
+            // console.log('获取到座位列表:', this.allSeats)
             this.totalSeats = this.allSeats.length
           } else {
             // 如果API调用失败或没有数据，创建示例座位数据
-            console.error('获取座位列表失败或无数据，创建模拟数据:', res.msg)
+            // console.error('获取座位列表失败或无数据，创建模拟数据:', res.msg)
             this.createDemoSeats()
           }
         })
         .catch(err => {
           this.loading = false
-          console.error('获取座位列表失败，创建模拟数据', err)
+          // console.error('获取座位列表失败，创建模拟数据', err)
           this.createDemoSeats()
         })
     },
 
     // 创建模拟座位数据用于展示
     createDemoSeats() {
-      console.log('创建模拟座位数据')
+      // console.log('创建模拟座位数据')
 
       // 获取当前选中的楼层信息
       const currentFloor = this.floors.find(f => f.roomId === this.selectedFloor)
@@ -579,7 +579,7 @@ export default {
         status: this.seatForm.status
       }
 
-      console.log('更新座位状态:', payload)
+      //console.log('更新座位状态:', payload)
       this.loading = true
 
       // 检查是否为模拟数据
@@ -607,7 +607,7 @@ export default {
       }
 
       // 实际API调用
-      request.put('/seats/status', payload)
+      request.put(`/seats/status?seatId=${this.selectedSeat.id}&status=${this.seatForm.status}`)
         .then(res => {
           this.loading = false
           if (res.code === '0') {
@@ -631,7 +631,7 @@ export default {
         })
         .catch(err => {
           this.loading = false
-          console.error('座位状态更新失败', err)
+          ////console.error('座位状态更新失败', err)
           this.$message.error('座位状态更新失败，请检查网络连接')
         })
     },
@@ -652,7 +652,7 @@ export default {
         return
       }
 
-      console.log('批量更新座位状态:', this.selectedFloor, this.batchForm.status)
+      //console.log('批量更新座位状态:', this.selectedFloor, this.batchForm.status)
       this.loading = true
 
       // 检查是否为模拟数据
@@ -697,14 +697,14 @@ export default {
         })
         .catch(err => {
           this.loading = false
-          console.error('批量更新座位状态失败', err)
+          //console.error('批量更新座位状态失败', err)
           this.$message.error('批量更新座位状态失败，请检查网络连接')
         })
     },
 
     // 发送座位通知
     notifySeatUser(seatId, message) {
-      console.log('发送座位通知:', seatId, message)
+      //console.log('发送座位通知:', seatId, message)
 
       // 检查是否为模拟数据
       if (String(seatId).startsWith('demo-')) {
@@ -724,14 +724,14 @@ export default {
           }
         })
         .catch(err => {
-          console.error('发送通知失败', err)
+          //console.error('发送通知失败', err)
           this.$message.error('发送通知失败，请检查网络连接')
         })
     },
 
     // 发送楼层通知
     notifyFloorUsers(floorId, message) {
-      console.log('发送楼层通知:', floorId, message)
+      //console.log('发送楼层通知:', floorId, message)
 
       // 检查是否为模拟数据
       if (this.allSeats.length > 0 && String(this.allSeats[0].id).startsWith('demo-')) {
@@ -751,7 +751,7 @@ export default {
           }
         })
         .catch(err => {
-          console.error('发送通知失败', err)
+          //console.error('发送通知失败', err)
           this.$message.error('发送通知失败，请检查网络连接')
         })
     }

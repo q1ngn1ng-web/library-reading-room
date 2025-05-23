@@ -23,20 +23,20 @@ class WebSocketService {
 
   connect() {
     if (this.isManualClosed) {
-      console.log('WebSocket已手动关闭，不再尝试重连');
+      // console.log('WebSocket已手动关闭，不再尝试重连');
       return;
     }
 
     this.isConnected = false;
     const baseURL = process.env.VUE_APP_WS_URL || "ws://localhost:9090";
 
-    console.log('用户信息:', {
-      roomId: this.roomId,
-      userId: this.userId,
-      username: this.username,
-      displayName: this.displayName,
-      avatar: this.avatar
-    });
+    // console.log('用户信息:', {
+    //   roomId: this.roomId,
+    //   userId: this.userId,
+    //   username: this.username,
+    //   displayName: this.displayName,
+    //   avatar: this.avatar
+    // });
 
     // 处理avatar参数
     let avatarParam = this.avatar || '';
@@ -46,7 +46,7 @@ class WebSocketService {
         const pathSegments = url.pathname.split('/');
         avatarParam = pathSegments[pathSegments.length - 1];
       } catch (e) {
-        console.error('Avatar URL解析失败:', e);
+        // console.error('Avatar URL解析失败:', e);
         avatarParam = 'default-avatar';
       }
     }
@@ -57,13 +57,13 @@ class WebSocketService {
 
     // 使用新的连接格式
     const wsUrl = `${baseURL}/imserver/${this.roomId}/${encodedUserId}/${encodedAvatar}`;
-    console.log('WebSocket连接URL:', wsUrl);
+    // console.log('WebSocket连接URL:', wsUrl);
 
     try {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = (event) => {
-        console.log('WebSocket connected');
+        // console.log('WebSocket connected');
         this.reconnectAttempts = 0;
         this.isConnected = true;
         this.startHeartbeat();
@@ -93,7 +93,7 @@ class WebSocketService {
               return user;
             });
 
-            console.log('接收到用户列表:', processedUsers);
+            //console.log('接收到用户列表:', processedUsers);
             this.onUserList(processedUsers);
           } else if (data.type === 'message') {
             // Process message to ensure it has proper displayName
@@ -105,12 +105,12 @@ class WebSocketService {
             this.onMessage(data);
           }
         } catch (error) {
-          console.error('WebSocket message parse error:', error);
+          //console.error('WebSocket message parse error:', error);
         }
       };
 
       this.ws.onclose = (event) => {
-        console.log('WebSocket disconnected', event);
+        //console.log('WebSocket disconnected', event);
         this.stopHeartbeat();
         this.isConnected = false;
 
@@ -118,12 +118,12 @@ class WebSocketService {
         if (!this.isManualClosed && (event.code !== 1000 || event.wasClean !== true)) {
           this.reconnect();
         } else {
-          console.log('WebSocket正常关闭，不再重连');
+          //console.log('WebSocket正常关闭，不再重连');
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        //console.error('WebSocket error:', error);
         this.isConnected = false;
 
         // 调用错误回调
@@ -132,7 +132,7 @@ class WebSocketService {
         }
       };
     } catch (e) {
-      console.error('WebSocket创建失败:', e);
+      //console.error('WebSocket创建失败:', e);
       this.isConnected = false;
 
       // 调用错误回调
@@ -146,13 +146,13 @@ class WebSocketService {
 
   reconnect() {
     if (this.isManualClosed) {
-      console.log('WebSocket已手动关闭，不再尝试重连');
+      //console.log('WebSocket已手动关闭，不再尝试重连');
       return;
     }
 
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+      //console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
       setTimeout(() => this.connect(), this.reconnectTimeout);
     } else {
       console.error('WebSocket重连失败，已达到最大重试次数');
