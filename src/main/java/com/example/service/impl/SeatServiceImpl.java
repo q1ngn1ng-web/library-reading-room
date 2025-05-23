@@ -53,4 +53,9 @@ public class SeatServiceImpl implements SeatService {
     public void deleteSeat(Integer id) {
         seatDao.deleteByPrimaryKey(id);
     }
+
+    @Override
+    public void batchUpdateSeatStatus(Integer roomId, Integer status) {
+        seatDao.batchUpdateSeatStatus(roomId, status);
+    }
 }

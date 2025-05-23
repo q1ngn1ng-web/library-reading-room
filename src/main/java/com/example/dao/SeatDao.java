@@ -23,4 +23,7 @@ public interface SeatDao extends Mapper<Seat> {
 
     @Update("update seat set status = #{status} where id = #{id}")
     void updateSeatStatus(@Param("id") Integer id, @Param("status") Integer status);
+
+    @Update("update seat set status = #{status} where room_id = #{roomId}")
+    void batchUpdateSeatStatus(@Param("roomId") Integer roomId, @Param("status") Integer status);
 }

@@ -57,4 +57,12 @@ public interface SeatService {
      * @param id Seat ID
      */
     void deleteSeat(Integer id);
+
+    /**
+     * Batch update seat status by floor
+     *
+     * @param roomId Room/Floor ID
+     * @param status New status
+     */
+    void batchUpdateSeatStatus(Integer roomId, Integer status);
 }

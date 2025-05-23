@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/seats")
@@ -104,6 +105,18 @@ public class SeatController {
     public Result updateSeatStatus(@RequestParam("seatId") Integer seatId,
             @RequestParam("status") Integer status) {
         seatService.updateSeatStatus(seatId, status);
+        return Result.success();
+    }
+
+
+    @PutMapping("/floor/status")
+    public Result batchUpdateSeatStatus(@RequestBody Map<String, Integer> params) {
+        Integer roomId = params.get("roomId");
+        Integer status = params.get("status");
+        if (roomId == null || status == null) {
+            return Result.error("参数错误");
+        }
+        seatService.batchUpdateSeatStatus(roomId, status);
         return Result.success();
     }
 }
