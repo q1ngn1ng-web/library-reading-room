@@ -679,7 +679,10 @@ export default {
       }
 
       // 实际API调用
-      request.put(`/seats/floor/${this.selectedFloor}/status?status=${this.batchForm.status}`)
+      request.put('/seats/floor/status', {
+        roomId: this.selectedFloor,
+        status: this.batchForm.status
+      })
         .then(res => {
           this.loading = false
           if (res.code === '0') {

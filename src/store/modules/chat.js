@@ -82,7 +82,7 @@ const actions = {
       // console.log('API 返回的聊天室原始数据:', res);
 
       if (res.code === '0') {
-        console.log('聊天室数据详情:', JSON.stringify(res.data, null, 2));
+        // console.log('聊天室数据详情:', JSON.stringify(res.data, null, 2));
         // 打印第一个聊天室的详细信息，检查字段名
         // if (res.data && res.data.length > 0) {
         //   console.log('第一个聊天室数据:');

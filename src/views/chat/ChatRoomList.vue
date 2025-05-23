@@ -187,6 +187,7 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          console.log('前往预约')
           this.goToSeatReservation()
         }).catch(() => {})
         return

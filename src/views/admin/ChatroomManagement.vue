@@ -19,16 +19,16 @@
       <el-table-column
         prop="floor"
         label="楼层"
-        width="100">
+        width="80">
       </el-table-column>
       <el-table-column
         prop="category"
         label="分类"
-        width="120">
+        width="100">
       </el-table-column>
       <el-table-column
         label="状态"
-        width="120">
+        width="100">
         <template slot-scope="scope">
           <el-tag :type="scope.row.isAvailable ? 'success' : 'danger'">
             {{ scope.row.isAvailable ? '开放' : '关闭' }}
@@ -37,7 +37,7 @@
       </el-table-column>
       <el-table-column
         label="聊天权限"
-        width="120">
+        width="100">
         <template slot-scope="scope">
           <el-tag :type="scope.row.isChat ? 'success' : 'warning'">
             {{ scope.row.isChat ? '允许发言' : '禁言' }}
@@ -46,7 +46,7 @@
       </el-table-column>
       <el-table-column
         label="人数"
-        width="120">
+        width="80">
         <template slot-scope="scope">
           <div>{{ scope.row.currentUser }}/{{ scope.row.maxUser }}</div>
         </template>
@@ -54,11 +54,16 @@
       <el-table-column
         prop="createTime"
         label="创建时间"
-        width="180">
+        width="160">
       </el-table-column>
       <el-table-column
-        label="操作">
+        label="操作"
+        width="420">
         <template slot-scope="scope">
+          <el-button
+            size="mini"
+            type="primary"
+            @click="enterChatRoom(scope.row)">进入聊天室</el-button>
           <el-button
             size="mini"
             @click="handleViewUsers(scope.row)">查看用户</el-button>
@@ -399,6 +404,11 @@ export default {
           this.$message.error(`用户${actionText}失败`)
         })
       }).catch(() => {})
+    },
+
+    // 进入聊天室
+    enterChatRoom(room) {
+      this.$router.push(`/chat-room/${room.id}`)
     }
   }
 }

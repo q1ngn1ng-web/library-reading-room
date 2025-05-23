@@ -31,7 +31,7 @@ const routes = [
       { path: 'notice', component: Notice },
       // 聊天室列表
       { path: 'chat-rooms', component: ChatRoomList },
-      // 单个聊天室
+      // 用户访问的聊天室
       { path: 'chat-room/:id', component: ChatRoom },
       { path: 'person', component: Person },
       // 座位预约
@@ -41,6 +41,8 @@ const routes = [
   { path: '/admin', component: AdminDashboard },
   // 管理员聊天室管理
   { path: '/admin/chat-rooms', component: ChatRoomAdmin },
+  // 管理员访问的聊天室
+  { path: '/admin/chat-room/:id', component: ChatRoom },
 ]
 
 const router = new VueRouter({
@@ -60,16 +62,20 @@ router.beforeEach((to, from, next) => {
   const adminToken = localStorage.getItem("admin-token");
 
   // 如果是访问管理员页面
-  if (to.path === '/admin' || to.path === '/admin/chat-rooms') {
+  if (to.path.startsWith('/admin')) {
     if (!adminToken) {
       return next("/login");
     }
     return next();
   }
 
-  // 聊天室相关路由
+  // 用户聊天室相关路由
   if (to.path.startsWith('/chat-room/')) {
-    // 检查是否有有效的预约
+    // 如果是管理员，重定向到管理员的聊天室路由
+    if (adminToken) {
+      return next(to.path.replace('/chat-room/', '/admin/chat-room/'));
+    }
+    // 非管理员需要检查是否有有效的预约
     const activeReservation = localStorage.getItem('activeReservation');
     if (!activeReservation && userToken) {
       // 如果没有活跃预约，重定向到座位预约页面

@@ -1,5 +1,9 @@
 <template>
   <div class="chat-room">
+    <el-button class="back-button" icon="el-icon-back" size="small" @click="goBack">
+      返回{{ isAdmin ? '管理后台' : '聊天室列表' }}
+    </el-button>
+
     <el-alert
       v-if="!canAccessChat && !isAdmin"
       title="您需要有预约或已签到的座位才能使用聊天室"
@@ -124,6 +128,7 @@ export default {
       isAnonymous: false,
       defaultAvatar: require('@/assets/default-avatar.png'), // 请确保路径正确或使用在线链接
       user: null,
+      admin:null,
       isConnected: false,
       showDebugInfo: true,
       connectionError: false, // 添加连接错误状态
@@ -148,6 +153,10 @@ export default {
     },
     isAdmin() {
       return !!localStorage.getItem('admin-token')
+    },
+    // 添加一个计算属性来判断是否是管理员视图
+    isAdminView() {
+      return this.$route.path.startsWith('/admin/')
     }
   },
   methods: {
@@ -158,6 +167,11 @@ export default {
       'clearCurrentRoomData',
       'fetchChatHistory'
     ]),
+
+    goBack() {
+      // 返回上一页
+      this.$router.go(-1);
+    },
 
     handleWebSocketError(errorMsg) {
       this.connectionError = true;
@@ -225,27 +239,43 @@ export default {
     },
     initWebSocket() {
       if (this.wsService) {
-        this.wsService.disconnect();      }
+        this.wsService.disconnect();
+      }
 
-      this.user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!this.user || !this.user.username) {
+      // 根据当前路由判断是以管理员还是用户身份进入聊天室
+      const isAdminRoute = this.$route.path.startsWith('/admin');
+      const userInfo = isAdminRoute
+        ? JSON.parse(localStorage.getItem('admin') || '{}')
+        : JSON.parse(localStorage.getItem('user') || '{}');
+
+      if (!userInfo || !userInfo.username) {
         this.$message.error('用户信息不完整，请重新登录');
-        this.$router.push('/login');
+        this.$router.push(isAdminRoute ? '/admin' : '/login');
         return;
       }
+
+      this.user = userInfo;
+
       // 确保我们得到用户ID
       const userId = this.user.id;
       if (!userId) {
         console.warn('用户ID不存在，可能会导致数据库中user_id为0');
       }
+
       this.connectionError = false;
       this.isConnected = false;
+
       // 获取当前预约的座位信息
       const activeReservation = this.getActiveReservation;
       let displayName = this.user.nickname || this.user.username;
-      // 如果有活跃预约，添加座位前缀
-      if (activeReservation && activeReservation.floorNumber && activeReservation.seatNumber) {
-        displayName = `${activeReservation.floorNumber}层${activeReservation.seatNumber}号 ${this.user.nickname || this.user.username}`;
+
+      // 如果是管理员，添加管理员标识
+      if (this.isAdmin) {
+        displayName = `[管理员] ${displayName}`;
+      }
+      // 如果有活跃预约且不是管理员，添加座位前缀
+      else if (activeReservation && activeReservation.floorNumber && activeReservation.seatNumber) {
+        displayName = `${activeReservation.floorNumber}层${activeReservation.seatNumber}号 ${displayName}`;
       }
 
       console.log('创建WebSocket连接，用户信息:', {
@@ -253,16 +283,17 @@ export default {
         昵称: this.user.nickname,
         用户名: this.user.username,
         显示名称: displayName,
-        预约信息: activeReservation ? {
+        是否管理员: this.isAdmin,
+        预约信息: !this.isAdmin && activeReservation ? {
           楼层: activeReservation.floorNumber,
           座位号: activeReservation.seatNumber
-        } : '无预约'
+        } : '无需预约(管理员)'
       });
 
       this.wsService = new WebSocketService(
         this.roomId,
         userId,
-        displayName, // 使用带有座位前缀的用户名
+        displayName,
         this.user.avatar || '',
         this.handleMessage,
         this.handleUserList
@@ -307,8 +338,10 @@ export default {
     // 检查用户是否可以进入聊天室
     checkAccess() {
       if (this.isAdmin) {
-        return true;
-      } else if (!this.canAccessChat) {
+        return true;  // 管理员直接返回true，允许访问
+      }
+
+      if (!this.canAccessChat) {
         this.$message.warning('您需要有预约或已签到的座位才能使用聊天室')
         this.$router.push('/chat')
         return false
@@ -358,12 +391,14 @@ export default {
   async created() {
     this.roomId = parseInt(this.$route.params.id)
     if (!this.roomId) {
-      this.$router.push('/chat-rooms')
+      // 根据视图类型决定重定向路径
+      const redirectPath = this.isAdminView ? '/admin/chat-rooms' : '/chat-rooms';
+      this.$router.push(redirectPath)
       return
     }
 
-    // 检查是否有活跃预约
-    if (!this.checkAccess()) {
+    // 检查是否有活跃预约（仅对用户视图进行检查）
+    if (!this.isAdminView && !this.checkAccess()) {
       // 如果没有预约，仍然加载聊天室信息，但不连接WebSocket
       await this.loadRoomData()
       return
@@ -382,7 +417,9 @@ export default {
       console.error('连接聊天室失败:', error)
       if (error.message === 'Network Error') {
         this.$message.error('无法连接到服务器，请确认后端服务已启动')
-        this.$router.push('/chat-rooms')
+        // 根据视图类型决定重定向路径
+        const redirectPath = this.isAdminView ? '/admin/chat-rooms' : '/chat-rooms';
+        this.$router.push(redirectPath)
       }
     }
   },
@@ -409,6 +446,10 @@ export default {
   height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
+}
+
+.back-button {
+  margin-bottom: 15px;
 }
 
 .room-info-card {
