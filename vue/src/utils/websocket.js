@@ -28,7 +28,11 @@ export default class WebSocketService {
     }
 
     this.isConnected = false;
-    const baseURL = process.env.VUE_APP_WS_URL || "ws://localhost:9090";
+    // 优先使用环境变量；生产环境未配置时按当前页面地址同源推导（经 Nginx /api 反代）
+    const baseURL = process.env.VUE_APP_WS_URL
+      || (process.env.NODE_ENV === 'production'
+        ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api`
+        : 'ws://localhost:9090');
 
     // console.log('用户信息:', {
     //   roomId: this.roomId,
