@@ -6,8 +6,10 @@
 
 - [ ] T1 引入 `spring-security-crypto` 依赖；新增 `PasswordEncoderConfig`（BCryptPasswordEncoder Bean）
   验证：`mvn compile` 通过
-- [ ] T2 `UserService.login` / `AdminService.login` 改造：按用户名查询 + BCrypt matches + 存量明文自动升级回写
+- [ ] T2 `UserService.login` / `AdminService.login` 改造：按用户名查询 + BCrypt matches + 存量明文防御性兜底分支
   验证：单测/手工——明文账号首登成功且库里变 `$2a$`；二次登录走 matches 分支
+- [ ] T2b 启动迁移器 `PasswordMigrationRunner`（ApplicationRunner）：启动时把 user/admin 表所有非 `$2a$` 密码行就地哈希化
+  验证：导入种子 SQL → 启动服务 → 全表密码均为 `$2a$` 前缀
 - [ ] T3 `UserService.add`、`resetPassword`、`AdminController` 相关写入口全部改存 BCrypt 哈希
   验证：注册新号 → 库中为哈希；管理员重置密码 → 返回明文给前端但库存哈希
 - [ ] T4 `application.yml` 加 `jwt.secret/expire-hours`；启动 fail-fast 校验（生产环境禁默认密钥）
