@@ -18,10 +18,12 @@ public class RateLimiterInterceptor implements HandlerInterceptor {
     private static final Log log = LogFactory.get();
 
     /**
-     * 令牌桶里放50个令牌，外界调用本系统所有接口，都得先在桶里获取令牌
-     * 拿到令牌后，才可以正常调用接口，为了限流
+     * 令牌桶全局限流。QPS 可经环境变量 RATE_LIMIT_QPS 配置（默认 200）。
+     * 快速失败：拿不到令牌立即返回 429，不排队（阻塞式 acquire 会把过载传导给所有请求方）。
      */
-    private static final RateLimiter limiter = RateLimiter.create(50);
+    private static final RateLimiter limiter = RateLimiter.create(
+            Double.parseDouble(System.getProperty("ratelimit.qps",
+                    System.getenv().getOrDefault("RATE_LIMIT_QPS", "200"))));
 
 
 
