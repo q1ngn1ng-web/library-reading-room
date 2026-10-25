@@ -49,7 +49,7 @@ public class JwtTokenUtils {
     private AdminService adminService;
 
     @Resource
-    private StringRedisTemplate redisTemplate;
+    private StringRedisTemplate stringRedisTemplate;
 
     @Value("${jwt.secret:}")
     private String secret;
@@ -67,7 +67,7 @@ public class JwtTokenUtils {
         EXPIRE_HOURS = expireHours;
         staticUserService = userService;
         staticAdminService = adminService;
-        staticRedis = redisTemplate;
+        staticRedis = stringRedisTemplate;
     }
 
     /**

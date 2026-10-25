@@ -27,7 +27,7 @@ public class UserController {
     private UserService userService;
 
     @Resource
-    private StringRedisTemplate redisTemplate;
+    private StringRedisTemplate stringRedisTemplate;
 
     @PostMapping("/login")
     public Result login(@RequestBody User user, @RequestParam String key, HttpServletRequest request) {
@@ -37,7 +37,7 @@ public class UserController {
         // 验证码从 Redis 读取（5 分钟 TTL）
         String value;
         try {
-            value = redisTemplate.opsForValue().get("captcha:" + key);
+            value = stringRedisTemplate.opsForValue().get("captcha:" + key);
         } catch (Exception e) {
             log.error("验证码服务(Redis)不可用", e);
             return Result.error("验证码服务暂不可用，请稍后重试");
@@ -46,7 +46,7 @@ public class UserController {
             return Result.error("验证码不正确或已过期");
         }
         // 一次性消费：校验通过立即删除，防止同一验证码重放
-        redisTemplate.delete("captcha:" + key);
+        stringRedisTemplate.delete("captcha:" + key);
         User loginUser = userService.login(user);
         return Result.success(loginUser);
     }
