@@ -33,15 +33,24 @@ public class AdminController {
      */
     @PostMapping("/password")
     public Result updatePassword(@RequestBody Admin admin) {
+        if (admin.getPassword() == null || admin.getPassword().trim().isEmpty()) {
+            return Result.error("原密码不能为空");
+        }
+        if (admin.getNewPassword() == null || admin.getNewPassword().trim().isEmpty()) {
+            return Result.error("新密码不能为空");
+        }
         Admin currentAdmin = JwtTokenUtils.getCurrentAdmin();
         if (currentAdmin == null) {
             return Result.error("token验证失效，请重新登陆");
         }
-        if (!admin.getPassword().equals(currentAdmin.getPassword())) {
+        // 原密码服务端复核（BCrypt matches）
+        if (!adminService.checkOldPassword(currentAdmin.getId(), admin.getPassword())) {
             return Result.error("原密码输入错误");
         }
-        admin.setPassword(admin.getNewPassword());
-        adminService.update(admin);
+        Admin upd = new Admin();
+        upd.setId(currentAdmin.getId());
+        upd.setPassword(admin.getNewPassword());
+        adminService.update(upd); // update 内统一做 BCrypt 编码
         return Result.success();
     }
 
@@ -60,6 +69,8 @@ public class AdminController {
     @GetMapping("/findAll/{id}")
     public Result findAll() {
         List<Admin> list = adminService.findAll();
+        // 响应不回传密码哈希
+        list.forEach(a -> a.setPassword(null));
         return Result.success(list);
     }
 
@@ -69,6 +80,9 @@ public class AdminController {
     @GetMapping("/find/{id}")
     public Result findById(@PathVariable Integer id) {
         Admin admin = adminService.findById(id);
+        if (admin != null) {
+            admin.setPassword(null);
+        }
         return Result.success(admin);
     }
 

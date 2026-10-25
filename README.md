@@ -57,9 +57,9 @@
 mysql -uroot -p -e "CREATE DATABASE library_room DEFAULT CHARACTER SET utf8mb4"
 mysql -uroot -p library_room < library_room.sql
 
-# 2. 启动后端（敏感配置通过环境变量注入）
+# 2. 启动后端（敏感配置通过环境变量注入；JWT_SECRET 未配置会拒绝启动）
 cd springboot
-DB_USERNAME=root DB_PASSWORD=你的密码 mvn spring-boot:run
+DB_USERNAME=root DB_PASSWORD=你的密码 JWT_SECRET=本地开发随意一串字符 mvn spring-boot:run
 
 # 3. 启动前端
 cd ../vue
@@ -71,6 +71,7 @@ npm run serve        # 默认 http://localhost:8080
 | --- | --- | --- |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | 数据库地址/端口/库名 | `localhost` / `3306` / `library_room` |
 | `DB_USERNAME` / `DB_PASSWORD` | 数据库账号/密码 | `root` / 空 |
+| `JWT_SECRET` | JWT 签名密钥（**必填，未配置拒绝启动**） | 无 |
 
 **演示账号**（密码均为 `123456`）：管理员 `admin`，普通用户 `20230001`
 
@@ -78,7 +79,7 @@ npm run serve        # 默认 http://localhost:8080
 
 本项目正在持续重构加固，当前已知的技术债（也是接下来的迭代计划）：
 
-- [ ] **安全加固**：密码改为 BCrypt 存储；JWT 改用独立服务端密钥；WebSocket 连接鉴权（当前连接参数中的角色标识可被伪造）
+- [x] **安全加固**（2026-10 `security-hardening` 变更完成）：密码 BCrypt 哈希存储（启动时自动迁移存量明文）；JWT 改独立服务端密钥（`JWT_SECRET` 环境变量，未配置拒绝启动）；WebSocket 握手改 token 鉴权，身份/角色/昵称/头像全部服务端反查，消除 URL 参数伪造
 - [ ] **并发修复**：座位预约接口存在 check-then-act 竞态（并发下同一座位可被重复预约），计划引入 Redis 分布式锁 + 数据库乐观锁
 - [ ] **Redis 引入**：验证码、登录态缓存、座位状态缓存、聊天室在线人数
 - [ ] **RabbitMQ**：预约/签到/退座事件异步化，替代同步广播

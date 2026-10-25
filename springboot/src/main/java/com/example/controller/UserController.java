@@ -61,11 +61,14 @@ public class UserController {
             return Result.error("用户获取不到，token验证失效，请重新登陆");
         }
 
-        if (!user.getPassword().equals(currentUser.getPassword())) {
+        // 原密码服务端复核（BCrypt matches，不再依赖客户端比对）
+        if (!userService.checkOldPassword(currentUser.getId(), user.getPassword())) {
             return Result.error("原密码输入错误");
         }
-        user.setPassword(user.getNewPassword());
-        userService.update(user);
+        User upd = new User();
+        upd.setId(currentUser.getId());
+        upd.setPassword(user.getNewPassword());
+        userService.update(upd); // update 内统一做 BCrypt 编码
         return Result.success();
     }
 
@@ -89,12 +92,15 @@ public class UserController {
     @GetMapping
     public Result findAll() {
         List<User> list = userService.findAll();
+        // 响应不回传密码哈希
+        list.forEach(u -> u.setPassword(null));
         return Result.success(list);
     }
 
     @GetMapping("/search")
     public Result findBySearch(Params params) {
         PageInfo<User> info = userService.findBySearch(params);
+        info.getList().forEach(u -> u.setPassword(null));
         return Result.success(info);
     }
 

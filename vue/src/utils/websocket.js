@@ -42,28 +42,18 @@ export default class WebSocketService {
     //   avatar: this.avatar
     // });
 
-    // 处理avatar参数
-    let avatarParam = this.avatar || '';
-    if (avatarParam && typeof avatarParam === 'string' && avatarParam.includes('http')) {
-      try {
-        const url = new URL(avatarParam);
-        const pathSegments = url.pathname.split('/');
-        avatarParam = pathSegments[pathSegments.length - 1];
-      } catch (e) {
-        // console.error('Avatar URL解析失败:', e);
-        avatarParam = 'default-avatar';
+    // 按当前路由选择角色 token（身份由后端验签 token 后反查，前端只负责携带）
+    const isAdmin = window.location.pathname.startsWith('/admin');
+    const token = localStorage.getItem(isAdmin ? 'admin-token' : 'user-token');
+    if (!token) {
+      console.warn('未找到登录token，无法建立WebSocket连接');
+      if (typeof this.onError === 'function') {
+        this.onError('未登录或登录已过期');
       }
+      return;
     }
 
-    // 对用户ID进行Base64编码（与后端对应）
-    const encodedUserId = btoa(encodeURIComponent(this.userId.toString()));
-    const encodedAvatar = encodeURIComponent(avatarParam || '');
-
-    // 检查是否是管理员路由
-    const isAdmin = window.location.pathname.startsWith('/admin');
-
-    // 使用新的连接格式
-    const wsUrl = `${baseURL}/imserver/${this.roomId}/${encodedUserId}/${encodedAvatar}?role=${isAdmin ? 'admin' : 'user'}`;
+    const wsUrl = `${baseURL}/imserver/${this.roomId}?token=${encodeURIComponent(token)}`;
     // console.log('WebSocket连接URL:', wsUrl);
 
     try {

@@ -10,6 +10,7 @@ import com.example.exception.CustomException;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -18,10 +19,16 @@ import java.util.List;
 @Service
 public class UserService {
 
+    private static final String BCRYPT_PREFIX = "$2a$";
+
     @Autowired
     private ServerConfig serverConfig;
+
     @Resource
     private UserDao userDao;
+
+    @Resource
+    private BCryptPasswordEncoder passwordEncoder;
 
     public List<User> findAll() {
         return userDao.selectAll();
@@ -53,6 +60,8 @@ public class UserService {
         if (admin.getPassword() == null) {
             admin.setPassword("123456");
         }
+        // 新密码一律 BCrypt 哈希入库
+        admin.setPassword(passwordEncoder.encode(admin.getPassword()));
         if (ObjectUtil.isEmpty(admin.getAvatar())) {
             admin.setAvatar(serverConfig.getFileBaseUrl() + "qy-default.png");
         }
@@ -60,6 +69,10 @@ public class UserService {
     }
 
     public void update(User user) {
+        // 密码字段非空时统一做 BCrypt 编码（覆盖改密、重置等所有写入口）
+        if (user.getPassword() != null && !"".equals(user.getPassword())) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         userDao.updateByPrimaryKeySelective(user);
     }
 
@@ -75,15 +88,42 @@ public class UserService {
         if (user.getPassword() == null || "".equals(user.getPassword())) {
             throw new CustomException("密码不能为空");
         }
-        // 2. 从数据库里面根据这个用户名和密码去查询对应的用户信息
-        User loginUser = userDao.findByNameAndPassword(user.getUsername(), user.getPassword());
-        if (loginUser == null) {
+        // 2. 按用户名查询，密码在本地校验（不再把明文密码拼进 SQL）
+        User loginUser = userDao.findByName(user.getUsername());
+        if (loginUser == null || !passwordMatches(user.getPassword(), loginUser.getPassword())) {
             throw new CustomException("用户名或密码输入错误");
         }
-        // 生成token
-        String token = JwtTokenUtils.genToken(loginUser.getId().toString(), loginUser.getPassword());
+        // 3. 存量明文密码校验通过后就地升级为 BCrypt 哈希
+        if (!loginUser.getPassword().startsWith(BCRYPT_PREFIX)) {
+            User upd = new User();
+            upd.setId(loginUser.getId());
+            upd.setPassword(passwordEncoder.encode(user.getPassword()));
+            userDao.updateByPrimaryKeySelective(upd);
+        }
+        // 4. 生成token
+        String token = JwtTokenUtils.genToken(loginUser.getId(), "user");
         loginUser.setToken(token);
+        loginUser.setPassword(null); // 响应不回传密码
         return loginUser;
+    }
+
+    /**
+     * 校验原密码（明文/哈希兼容），用于改密前的身份复核
+     */
+    public boolean checkOldPassword(Integer id, String rawPassword) {
+        User user = userDao.selectByPrimaryKey(id);
+        return user != null && passwordMatches(rawPassword, user.getPassword());
+    }
+
+    private boolean passwordMatches(String rawPassword, String stored) {
+        if (stored == null) {
+            return false;
+        }
+        if (stored.startsWith(BCRYPT_PREFIX)) {
+            return passwordEncoder.matches(rawPassword, stored);
+        }
+        // 兼容未迁移的存量明文（正常情况下启动迁移器已全部哈希化）
+        return rawPassword.equals(stored);
     }
 
     public User findById(Integer id) {
@@ -100,10 +140,10 @@ public class UserService {
         // 生成新的随机密码
         String newPassword = "123456"; // 这里可以改成更复杂的随机密码生成逻辑
 
-        // 创建用户对象并设置新密码
+        // 创建用户对象并设置新密码（哈希入库，明文仅本次返回给管理员）
         User user = new User();
         user.setId(id);
-        user.setPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
 
         // 更新数据库中的密码
         userDao.updateByPrimaryKeySelective(user);

@@ -9,6 +9,7 @@ import com.example.dao.ReservationDao;
 import com.example.entity.Admin;
 import com.example.exception.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,8 @@ import java.util.Map;
 
 @Service
 public class AdminService {
+
+    private static final String BCRYPT_PREFIX = "$2a$";
 
     @Autowired
     private ServerConfig serverConfig;
@@ -39,6 +42,9 @@ public class AdminService {
     @Resource
     private ReservationDao reservationDao;
 
+    @Resource
+    private BCryptPasswordEncoder passwordEncoder;
+
     /**
      * 管理员登录
      */
@@ -50,15 +56,38 @@ public class AdminService {
         if (admin.getPassword() == null || "".equals(admin.getPassword())) {
             throw new CustomException("密码不能为空");
         }
-        // 2. 从数据库里面根据这个用户名和密码去查询对应的管理员信息
-        Admin adminUser = adminDao.findByNameAndPassword(admin.getUsername(), admin.getPassword());
-        if (adminUser == null) {
+        // 2. 按用户名查询，密码本地校验
+        Admin loginAdmin = adminDao.findByName(admin.getUsername());
+        if (loginAdmin == null || !passwordMatches(admin.getPassword(), loginAdmin.getPassword())) {
             throw new CustomException("用户名或密码输入错误");
         }
-        // 生成token
-        String token = JwtTokenUtils.genToken(adminUser.getId().toString(), adminUser.getPassword());
-        adminUser.setToken(token);
-        return adminUser;
+        // 3. 存量明文密码校验通过后就地升级为 BCrypt 哈希
+        if (!loginAdmin.getPassword().startsWith(BCRYPT_PREFIX)) {
+            Admin upd = new Admin();
+            upd.setId(loginAdmin.getId());
+            upd.setPassword(passwordEncoder.encode(admin.getPassword()));
+            adminDao.updateByPrimaryKeySelective(upd);
+        }
+        // 4. 生成token
+        String token = JwtTokenUtils.genToken(loginAdmin.getId(), "admin");
+        loginAdmin.setToken(token);
+        loginAdmin.setPassword(null); // 响应不回传密码
+        return loginAdmin;
+    }
+
+    public boolean checkOldPassword(Integer id, String rawPassword) {
+        Admin admin = adminDao.selectByPrimaryKey(id);
+        return admin != null && passwordMatches(rawPassword, admin.getPassword());
+    }
+
+    private boolean passwordMatches(String rawPassword, String stored) {
+        if (stored == null) {
+            return false;
+        }
+        if (stored.startsWith(BCRYPT_PREFIX)) {
+            return passwordEncoder.matches(rawPassword, stored);
+        }
+        return rawPassword.equals(stored);
     }
 
     /**
@@ -83,6 +112,10 @@ public class AdminService {
         Admin existAdmin = adminDao.selectByPrimaryKey(admin.getId());
         if (existAdmin == null) {
             throw new CustomException("管理员不存在");
+        }
+        // 密码字段非空时统一做 BCrypt 编码
+        if (admin.getPassword() != null && !"".equals(admin.getPassword())) {
+            admin.setPassword(passwordEncoder.encode(admin.getPassword()));
         }
         // 执行更新
         adminDao.updateByPrimaryKeySelective(admin);

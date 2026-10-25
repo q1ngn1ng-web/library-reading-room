@@ -10,8 +10,5 @@ import tk.mybatis.mapper.common.Mapper;
 public interface AdminDao extends Mapper<Admin> {
 
     @Select("select * from admin where username = #{username} limit 1")
-    Admin findByName(@Param("name") String name);
-
-    @Select("select * from admin where username = #{username} and password = #{password} limit 1")
-    Admin findByNameAndPassword(@Param("username") String name, @Param("password") String password);
+    Admin findByName(@Param("username") String username);
 }

@@ -65,10 +65,8 @@ export default {
   // 定义一些页面上控件出发的事件调用的方法
   methods: {
     submitForm() {
-      var userObj = this.currentUser;
-      console.log('userObj对象为:', userObj);
-      console.log('this.role为:', this.role);
-      if (!userObj.password) {
+      // 原密码取表单输入（不再依赖 localStorage 中缓存的旧密码对象）
+      if (!this.passwordForm.password) {
         this.$message.warning("请输入原密码");
         return;
       }
@@ -84,16 +82,22 @@ export default {
         this.$message.warning("两次输入的密码不一致");
         return;
       }
-      userObj.newPassword = this.passwordForm.newPassword;
+
+      // 只提交必要字段，原密码由服务端 BCrypt 复核
+      const payload = {
+        password: this.passwordForm.password,
+        newPassword: this.passwordForm.newPassword
+      };
 
       // 根据角色选择不同的API端点
       const apiUrl = this.role === 'admin' ? '/admin/password' : '/user/password';
 
-      request.post(apiUrl, userObj).then(res => {
+      request.post(apiUrl, payload).then(res => {
         if (res.code === '0') {
-          this.$message.success("修改成功");
-          // 根据角色清除对应的本地存储
+          this.$message.success("修改成功，请重新登录");
+          // 密码已变更，清除本地登录态（含token）并回到登录页
           localStorage.removeItem(this.role);
+          localStorage.removeItem(`${this.role}-token`);
           this.$router.push("/login");
         } else {
           this.$message.error(res.msg);

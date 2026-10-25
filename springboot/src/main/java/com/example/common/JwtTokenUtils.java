@@ -3,13 +3,17 @@ package com.example.common;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.entity.Admin;
 import com.example.entity.User;
 import com.example.service.AdminService;
 import com.example.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -19,78 +23,108 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
 
+/**
+ * JWT 工具：统一使用服务端独立密钥签发与验签（密钥经环境变量 JWT_SECRET 注入），
+ * payload 携带 userId（audience）与 role（claim：user/admin）。
+ * REST 拦截器与 WebSocket 握手共用 verifyToken，身份以 token 为准。
+ */
 @Component
 public class JwtTokenUtils {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtTokenUtils.class);
+
     private static UserService staticUserService;
     private static AdminService staticAdminService;
-    private static final Logger log = LoggerFactory.getLogger(JwtTokenUtils.class);
+    private static String SECRET;
+    private static int EXPIRE_HOURS;
 
     @Resource
     private UserService userService;
+
     @Resource
     private AdminService adminService;
 
-    @PostConstruct
-    public void setUserService() {
-        staticUserService = userService;
-    }
+    @Value("${jwt.secret:}")
+    private String secret;
+
+    @Value("${jwt.expire-hours:4}")
+    private int expireHours;
 
     @PostConstruct
-    public void setAdminService() {
+    public void init() {
+        if (StrUtil.isBlank(secret)) {
+            // fail-fast：密钥未配置直接拒绝启动，避免生产环境裸奔默认密钥
+            throw new IllegalStateException("JWT_SECRET 未配置：请通过环境变量注入强随机密钥");
+        }
+        SECRET = secret;
+        EXPIRE_HOURS = expireHours;
+        staticUserService = userService;
         staticAdminService = adminService;
     }
 
     /**
-     * 生成token
+     * 生成 token：audience 存 userId，claim 存角色
      */
-    public static String genToken(String userId, String password) {
-        return JWT.create().withAudience(userId) // 将 userId 保存到 token 里面,作为载荷
-                .withExpiresAt(DateUtil.offsetHour(new Date(), 4)) // 2小时后token过期
-                .sign(Algorithm.HMAC256(password)); // 以 password 作为 token 的密钥
+    public static String genToken(Integer userId, String role) {
+        return JWT.create()
+                .withAudience(userId.toString())
+                .withClaim("role", role)
+                .withExpiresAt(DateUtil.offsetHour(new Date(), EXPIRE_HOURS))
+                .sign(Algorithm.HMAC256(SECRET));
     }
 
     /**
-     * 从token中提取出id，再根据id查询
-     * 获取当前登录的用户信息
+     * 验签并解析 token。验签失败抛出 JWTVerificationException。
+     */
+    public static DecodedJWT verifyToken(String token) {
+        JWTVerifier verifier = JWT.require(Algorithm.HMAC256(SECRET)).build();
+        return verifier.verify(token);
+    }
+
+    public static Integer getTokenUserId(DecodedJWT jwt) {
+        return Integer.valueOf(jwt.getAudience().get(0));
+    }
+
+    public static String getTokenRole(DecodedJWT jwt) {
+        String role = jwt.getClaim("role").asString();
+        return StrUtil.isBlank(role) ? "user" : role;
+    }
+
+    /**
+     * 获取当前登录用户（userId/role 由 JwtInterceptor 验签后注入请求上下文）
      */
     public static User getCurrentUser() {
-        String token = null;
+        HttpServletRequest request = currentRequest();
+        if (request == null || !"user".equals(request.getAttribute("userRole"))) {
+            return null;
+        }
+        Integer userId = (Integer) request.getAttribute("userId");
         try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
-                    .getRequest();
-            token = request.getHeader("token");
-            if (StrUtil.isBlank(token)) {
-                token = request.getParameter("token");
-                log.info("token:"+token);
-            }
-
-            // 解析token，获取用户的id
-            String adminId = JWT.decode(token).getAudience().get(0);
-            return staticUserService.findById(Integer.valueOf(adminId));
+            return staticUserService.findById(userId);
         } catch (Exception e) {
-            log.error("获取当前登录的用户信息失败, user-token={}", token, e);
+            log.error("获取当前登录用户失败, userId={}", userId, e);
             return null;
         }
     }
 
     public static Admin getCurrentAdmin() {
-        String token = null;
+        HttpServletRequest request = currentRequest();
+        if (request == null || !"admin".equals(request.getAttribute("userRole"))) {
+            return null;
+        }
+        Integer userId = (Integer) request.getAttribute("userId");
         try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
-                    .getRequest();
-            token = request.getHeader("token");
-            if (StrUtil.isBlank(token)) {
-                token = request.getParameter("token");
-            }
-            if (StrUtil.isBlank(token)) {
-                log.error("获取当前登录的token失败， admin-token: {}", token);
-                return null;
-            }
-            String adminId = JWT.decode(token).getAudience().get(0);
-            return staticAdminService.findById(Integer.valueOf(adminId));
+            return staticAdminService.findById(userId);
         } catch (Exception e) {
-            log.error("获取当前登录的管理员信息失败, admin-token={}", token, e);
+            log.error("获取当前登录管理员失败, adminId={}", userId, e);
+            return null;
+        }
+    }
+
+    private static HttpServletRequest currentRequest() {
+        try {
+            return ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        } catch (Exception e) {
             return null;
         }
     }

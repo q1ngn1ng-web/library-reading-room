@@ -73,18 +73,17 @@ sequenceDiagram
     participant I as JwtInterceptor
     V->>C: POST /user/login (username, password, key=验证码key)
     C->>S: login(user)
-    S->>DB: findByNameAndPassword
-    S-->>V: User + JWT token（过期时间 4h）
+    S->>DB: findByName（密码不进 SQL）
+    S->>S: BCrypt matches（存量明文自动升级哈希）
+    S-->>V: User + JWT token（4h，HMAC256 独立密钥，含 role 声明）
     Note over V: token 存 localStorage，后续请求放 header
     V->>I: 任意受保护接口 + token
-    I->>DB: 解出 userId → 查用户
-    I->>I: 用数据库中该用户密码做 HMAC256 验签
-    I-->>C: 通过，request.setAttribute(userId)
+    I->>I: 本地密钥验签（不查库），解出 userId/role
+    I->>I: /admin/** 路径强制 admin 角色
+    I-->>C: 通过，request 注入 userId/userRole
 ```
 
-双角色设计：`X-Role` 头区分 user/admin，分别校验 `user` 表与 `admin` 表签发的 token。
-
-> ⚠️ 已知问题：密码明文比对、JWT 以用户密码为签名密钥、每请求查库验签——改造计划见 README Roadmap。
+双角色设计：角色写入 token 声明（user/admin），拦截器据此放行；`/admin/**` 路径拒绝 user token。`JWT_SECRET` 经环境变量注入，未配置则启动失败（fail-fast）。库中存量明文密码由启动迁移器（`PasswordMigrationRunner`）自动哈希化。
 
 ### 3.2 座位预约链（状态机）
 
@@ -122,23 +121,23 @@ sequenceDiagram
     participant V as Vue
     participant W as WebSocketServer
     participant DB as MySQL
-    V->>W: 连接 /imserver/{roomId}/{userId}/{avatar}?role=
-    W->>DB: 房间校验（存在/开放/未满/未禁言）
+    V->>W: 连接 /imserver/{roomId}?token=JWT
+    W->>W: 验签 token → userId + role（不信任 URL 其他参数）
+    W->>DB: 反查昵称/头像；房间校验（存在/开放/未满/未禁言）
     W->>DB: 非管理员需有有效预约（SUCCESS未超时 或 CHECKED_IN）
-    W->>W: 注册会话（双层 ConcurrentHashMap）
+    W->>W: 注册会话（双层 ConcurrentHashMap，身份随会话存储）
     W-->>V: 房间用户列表广播
-    V->>W: {type:message, content, username, isAnonymous}
+    V->>W: {type:message, content, isAnonymous}（身份字段被忽略）
+    W->>W: 发送者身份从会话反查（不可伪造）
     W->>DB: ChatMessage 落库
     W-->>V: 房间内全员广播（匿名时展示名替换）
     loop 每分钟定时任务
-        W->>DB: 校验所有在线用户预约有效性
+        W->>DB: 校验所有在线用户预约有效性（管理员豁免）
         W-->>V: 预约过期者被强制断开
     end
 ```
 
 多房间状态管理：`Map<roomId, Map<sessionId, Session>>` 双层结构，房间之间完全隔离；前端配套心跳保活（30s）与指数性断线重连（最多 5 次）。
-
-> ⚠️ 已知问题：连接身份来自 URL 参数（userId、role 可伪造），消息中的 username/userId 信任客户端——改造方案：握手阶段改为 token 鉴权 + 服务端会话反查身份。
 
 ## 4. 数据模型（7 表）
 
