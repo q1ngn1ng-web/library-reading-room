@@ -25,11 +25,18 @@ public class RateLimiterInterceptor implements HandlerInterceptor {
 
 
 
+    /**
+     * 令牌桶全局限流 50 QPS。快速失败：拿不到令牌立即返回 429，
+     * 不排队（阻塞式 acquire 会把过载传导给所有请求方）。
+     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // 阻塞等待
-        log.info("阻塞中……");
-        limiter.acquire();
+        if (!limiter.tryAcquire()) {
+            response.setStatus(429);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write("{\"code\":\"429\",\"msg\":\"请求过于频繁，请稍后再试\",\"data\":null}");
+            return false;
+        }
         return true;
     }
 

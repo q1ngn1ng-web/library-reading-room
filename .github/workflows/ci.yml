@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: 后端构建与测试（JDK17 + MySQL 容器待引入，当前纯单测）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: 单元测试
+        run: mvn -B test --file springboot/pom.xml
+
+  frontend:
+    name: 前端构建（Node 20）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装 Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: vue/package-lock.json
+      - name: 安装依赖并构建
+        run: cd vue && npm ci --no-audit --no-fund && npm run build

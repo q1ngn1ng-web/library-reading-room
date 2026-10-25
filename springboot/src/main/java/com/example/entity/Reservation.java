@@ -3,6 +3,7 @@ package com.example.entity;
 import lombok.Data;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 import java.util.Date;
 
 @Data
@@ -16,12 +17,15 @@ public class Reservation {
     @Column(name = "user_id")
     private Integer userId;
 
+    @NotNull(message = "座位ID不能为空")
     @Column(name = "seat_id")
     private Integer seatId;
 
+    @NotNull(message = "预约开始时间不能为空")
     @Column(name = "start_time")
     private Date startTime;
 
+    @NotNull(message = "预约结束时间不能为空")
     @Column(name = "end_time")
     private Date endTime;
 

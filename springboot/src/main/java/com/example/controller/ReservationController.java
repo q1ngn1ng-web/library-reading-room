@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.util.Enumeration;
 
 @RestController
@@ -33,7 +34,7 @@ public class ReservationController {
      * @return Result with reservation ID
      */
     @PostMapping("/reserve")
-    public Result reserve(@RequestBody Reservation reservation, HttpServletRequest request) {
+    public Result reserve(@RequestBody @Valid Reservation reservation, HttpServletRequest request) {
 
         Integer userId = (Integer) request.getAttribute("userId");
         // log.info("从请求中获取的userId: {}", userId);
