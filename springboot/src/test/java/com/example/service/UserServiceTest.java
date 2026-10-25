@@ -60,19 +60,19 @@ class UserServiceTest {
         return u;
     }
 
-    private User loginRequest(String password) {
+    private User loginRequest(String username, String password) {
         User u = new User();
-        u.setUsername("20230001");
+        u.setUsername(username);
         u.setPassword(password);
         return u;
     }
 
     @Test
     void login_bcryptHash_matchesWithoutUpgrade() {
-        String hash = passwordEncoder.encode("123456");
+        String hash = passwordEncoder.encode("123456"); // 预计算：不得在 thenReturn 内调用 spy 方法
         when(userDao.findByName("20230001")).thenReturn(dbUser(hash));
 
-        User result = userService.login(loginRequest("123456"));
+        User result = userService.login(loginRequest("20230001", "123456"));
 
         assertNotNull(result.getToken());
         assertNull(result.getPassword(), "响应不得回传密码");
@@ -83,7 +83,7 @@ class UserServiceTest {
     void login_legacyPlaintext_upgradesToHash() {
         when(userDao.findByName("20230001")).thenReturn(dbUser("123456")); // 存量明文
 
-        User result = userService.login(loginRequest("123456"));
+        User result = userService.login(loginRequest("20230001", "123456"));
 
         assertNotNull(result.getToken());
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -94,21 +94,23 @@ class UserServiceTest {
 
     @Test
     void login_wrongPassword_throws() {
-        when(userDao.findByName("20230001")).thenReturn(dbUser(passwordEncoder.encode("123456")));
+        String hash = passwordEncoder.encode("123456");
+        when(userDao.findByName("20230001")).thenReturn(dbUser(hash));
         CustomException e = assertThrows(CustomException.class,
-                () -> userService.login(loginRequest("wrong")));
+                () -> userService.login(loginRequest("20230001", "wrong")));
         assertEquals("用户名或密码输入错误", e.getMsg());
     }
 
     @Test
     void login_userNotFound_throws() {
         when(userDao.findByName("ghost")).thenReturn(null);
-        assertThrows(CustomException.class, () -> userService.login(loginRequest("123456")));
+        assertThrows(CustomException.class, () -> userService.login(loginRequest("ghost", "123456")));
     }
 
     @Test
     void checkOldPassword_hashAndPlaintextBothSupported() {
-        when(userDao.selectByPrimaryKey(1)).thenReturn(dbUser(passwordEncoder.encode("123456")));
+        String hash = passwordEncoder.encode("123456");
+        when(userDao.selectByPrimaryKey(1)).thenReturn(dbUser(hash));
         assertTrue(userService.checkOldPassword(1, "123456"));
         assertFalse(userService.checkOldPassword(1, "bad"));
 

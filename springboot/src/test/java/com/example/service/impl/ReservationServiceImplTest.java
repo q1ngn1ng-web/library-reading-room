@@ -126,7 +126,7 @@ class ReservationServiceImplTest {
 
         Result result = service.checkIn(100);
 
-        assertEquals("Check-in successful.", result.getMsg());
+        assertEquals("Check-in successful.", result.getData());
         verify(reservationDao).checkIn(eq(100), eq(5), any(Date.class));
     }
 
@@ -147,7 +147,7 @@ class ReservationServiceImplTest {
 
         Result result = service.checkout(100);
 
-        assertEquals("Check-out successful.", result.getMsg());
+        assertEquals("Check-out successful.", result.getData());
         verify(reservationDao).checkout(eq(100), eq(6), any(Date.class));
         verify(seatDao).tryUpdateStatus(7, 2, 0);
     }
