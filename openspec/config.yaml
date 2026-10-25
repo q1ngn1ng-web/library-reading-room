@@ -1,0 +1,20 @@
+schema: spec-driven
+
+context: |
+  项目：图书馆阅览室管理系统（座位预约 + 楼层聊天室）
+  技术栈：Java 17 / Spring Boot 2.7 / MyBatis / MySQL 8 / 原生 WebSocket / Vue2 + ElementUI
+  部署：Nginx 同源 /api 反代 → SpringBoot(127.0.0.1:9090, systemd) → MySQL/Redis
+  约定：conventional commits；敏感配置一律环境变量注入（/etc/reading-room.env）；
+  线上验证地址 http://124.223.80.145；开发流程 spec → 用户确认 → 实现 → 部署验证 → 归档
+  技术难度约束：计算机本科毕业生水平，避免过度设计
+
+rules:
+  proposal:
+    - 必须包含"非目标"小节，明确不做什么
+    - 单个变更不超过 5 个工作日工作量
+  tasks:
+    - 每个任务不超过 2 小时粒度
+    - 实现类任务必须附带验证方式
+  spec:
+    - 场景用"当/则"格式，每条需求至少 2 个场景
+    - 只描述行为，不描述实现细节（实现进 design.md）
