@@ -46,6 +46,10 @@
               <i class="el-icon-chat-dot-round"></i>
               <span slot="title">聊天室管理</span>
             </el-menu-item>
+            <el-menu-item index="feedback">
+              <i class="el-icon-warning-outline"></i>
+              <span slot="title">举报管理</span>
+            </el-menu-item>
             <el-menu-item index="profile">
               <i class="el-icon-user"></i>
               <span slot="title">个人中心</span>
@@ -147,6 +151,7 @@
 
           <!-- 聊天室管理页面 -->
           <chatroom-management v-else-if="activeMenu === 'chatrooms'" />
+          <feedback-management v-else-if="activeMenu === 'feedback'" />
 
           <!-- 个人中心页面 -->
           <profile-management v-else-if="activeMenu === 'profile'" :admin-info="adminInfo" @info-updated="handleProfileUpdated" />
@@ -162,6 +167,7 @@ import NoticeManagement from './NoticeManagement.vue'
 import SeatManagement from './SeatManagement.vue'
 import ChatroomManagement from './ChatroomManagement.vue'
 import ProfileManagement from './ProfileManagement.vue'
+import FeedbackManagement from './FeedbackManagement.vue'
 import request from '@/utils/request'
 
 export default {
@@ -171,7 +177,8 @@ export default {
     NoticeManagement,
     SeatManagement,
     ChatroomManagement,
-    ProfileManagement
+    ProfileManagement,
+    FeedbackManagement
   },
   data() {
     return {

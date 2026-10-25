@@ -364,6 +364,28 @@ public class WebSocketServer implements InitializingBean {
         }
     }
 
+    /**
+     * 向所有在线管理员广播（遍历各房间会话中 role=admin 的用户；无在线管理员则忽略）
+     */
+    public static void sendToAdmins(String type, Dict payload) {
+        String json = JSONUtil.toJsonStr(payload.set("type", type));
+        for (Integer roomId : roomUsers.keySet()) {
+            for (Map.Entry<String, Object> entry : roomUsers.get(roomId).entrySet()) {
+                Dict u = (Dict) entry.getValue();
+                if ("admin".equals(u.getStr("role"))) {
+                    Session s = roomSessions.get(roomId).get(entry.getKey());
+                    if (s != null && s.isOpen()) {
+                        try {
+                            s.getBasicRemote().sendText(json);
+                        } catch (IOException e) {
+                            log.error("向管理员推送消息失败", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 静态方法，供其他类调用
     public static void sendRoomStatusUpdate(Integer roomId, Boolean status, String message) {
         Map<String, Session> roomSession = roomSessions.get(roomId);

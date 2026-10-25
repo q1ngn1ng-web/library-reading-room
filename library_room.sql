@@ -857,3 +857,26 @@ INSERT INTO `user` VALUES (36, '20250030', '123456', '学术导师', '女', 42, 
 INSERT INTO `user` VALUES (37, 'www', '123456', '零零柒', '男', 20, '', 1, 'STUDENT', 'default.png');
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ----------------------------
+-- Table structure for feedback（违规举报，2026-10 新增）
+-- ----------------------------
+DROP TABLE IF EXISTS `feedback`;
+CREATE TABLE `feedback`  (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '举报ID',
+  `reporter_id` int NOT NULL COMMENT '举报人',
+  `room_id` int NULL DEFAULT NULL COMMENT '楼层/房间',
+  `target_user_id` int NULL DEFAULT NULL COMMENT '被举报人',
+  `target_message_id` int NULL DEFAULT NULL COMMENT '关联消息',
+  `type` varchar(20) NOT NULL COMMENT '类型(TALK喧哗/EAT饮食/SEAT_OCCUPY占座/OTHER)',
+  `content` varchar(255) NULL DEFAULT NULL COMMENT '补充描述',
+  `is_anonymous` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否匿名',
+  `status` int NOT NULL DEFAULT 0 COMMENT '状态(0待处理/1已处理/2驳回)',
+  `handle_note` varchar(255) NULL DEFAULT NULL COMMENT '处理备注',
+  `handled_by` int NULL DEFAULT NULL COMMENT '处理人',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `handled_at` datetime NULL DEFAULT NULL COMMENT '处理时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_status`(`status` ASC) USING BTREE,
+  INDEX `idx_reporter`(`reporter_id` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '违规举报' ROW_FORMAT = Dynamic;

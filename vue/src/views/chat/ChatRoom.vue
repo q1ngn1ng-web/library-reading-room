@@ -80,6 +80,10 @@
               </div>
             </div>
             <div class="message-content">{{ msg.content }}</div>
+            <div v-if="!isMyMessage(msg)" class="message-actions">
+              <el-button type="text" size="mini" icon="el-icon-warning-outline"
+                         @click="openReport(msg)">举报</el-button>
+            </div>
           </div>
           <div v-if="messages.length === 0" class="no-messages">
             暂无消息，发送第一条消息开始聊天吧！
@@ -109,6 +113,34 @@
           </div>
           <div class="send-tip">提示: 按Ctrl+Enter快速发送</div>
         </div>
+
+        <!-- 违规举报弹窗 -->
+        <el-dialog title="举报违规行为" :visible.sync="reportDialog" width="420px">
+          <el-form label-width="80px">
+            <el-form-item label="被举报人">
+              <span>{{ reportTarget.name || '匿名用户' }}（{{ reportTarget.content ? reportTarget.content.slice(0, 20) : '' }}…）</span>
+            </el-form-item>
+            <el-form-item label="类型">
+              <el-select v-model="reportForm.type" style="width: 100%">
+                <el-option label="喧哗交谈" value="TALK" />
+                <el-option label="违规饮食" value="EAT" />
+                <el-option label="占座不用" value="SEAT_OCCUPY" />
+                <el-option label="其他" value="OTHER" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="补充描述">
+              <el-input v-model="reportForm.content" type="textarea" :rows="2"
+                        placeholder="选填：补充具体情况（如位置、持续时间）"></el-input>
+            </el-form-item>
+            <el-form-item label="匿名举报">
+              <el-switch v-model="reportForm.isAnonymous"></el-switch>
+            </el-form-item>
+          </el-form>
+          <div slot="footer">
+            <el-button @click="reportDialog = false">取消</el-button>
+            <el-button type="primary" :loading="reportSubmitting" @click="submitReport">提交举报</el-button>
+          </div>
+        </el-dialog>
       </el-main>
     </el-container>
   </div>
@@ -117,6 +149,7 @@
 <script>
 import { mapActions, mapGetters } from 'vuex'
 import WebSocketService from '@/utils/websocket'
+import { submitFeedback } from '@/api/feedback'
 
 export default {
   name: 'ChatRoom',
@@ -126,6 +159,10 @@ export default {
       wsService: null,
       messageContent: '',
       isAnonymous: false,
+      reportDialog: false,
+      reportSubmitting: false,
+      reportTarget: {},
+      reportForm: { type: 'TALK', content: '', isAnonymous: false },
       defaultAvatar: require('@/assets/default-avatar.png'), // 请确保路径正确或使用在线链接
       user: null,
       admin:null,
@@ -160,6 +197,29 @@ export default {
     }
   },
   methods: {
+    openReport(msg) {
+      this.reportTarget = { userId: msg.userId, name: msg.displayName || msg.nickname || msg.name, content: msg.content, messageId: msg.id }
+      this.reportForm = { type: 'TALK', content: '', isAnonymous: false }
+      this.reportDialog = true
+    },
+    submitReport() {
+      this.reportSubmitting = true
+      submitFeedback({
+        roomId: this.roomId ? Number(this.roomId) : null,
+        targetUserId: this.reportTarget.userId,
+        targetMessageId: this.reportTarget.messageId || null,
+        type: this.reportForm.type,
+        content: this.reportForm.content,
+        isAnonymous: this.reportForm.isAnonymous
+      }).then(res => {
+        if (res.code === '0') {
+          this.$message.success(res.data || '举报已提交')
+          this.reportDialog = false
+        } else {
+          this.$message.error(res.msg)
+        }
+      }).finally(() => { this.reportSubmitting = false })
+    },
     ...mapActions('chat', [
       'fetchChatRoom',
       'receiveMessage',

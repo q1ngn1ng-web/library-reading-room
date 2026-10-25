@@ -27,6 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/chatRoom/**")
                 .addPathPatterns("/chat/**")
                 .addPathPatterns("/notice/**")
+                .addPathPatterns("/feedback/**")
                 .excludePathPatterns("/files/**")
                 .excludePathPatterns("/captcha")
                 .excludePathPatterns("/type/upload")
