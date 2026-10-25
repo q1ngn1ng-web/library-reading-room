@@ -80,8 +80,7 @@ def main():
     tokens = [jwt_token(int(u), secret) for u in uids]
     print(f"已造 {len(uids)} 个压测用户\n")
 
-    print("| 并发 | 空座K | 成功 | 抢空(手慢了) | 429 | 异常 | P50(ms) | P95(ms) | P99(ms) | 总耗时 | 吞吐 |
-".replace("\n", ""))
+    print("| 并发 | 空座K | 成功 | 抢空(手慢了) | 429 | 异常 | P50(ms) | P95(ms) | P99(ms) | 总耗时 | 吞吐 |")
     print("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 
     try:
