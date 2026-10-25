@@ -1,0 +1,227 @@
+<template>
+  <el-container>
+    <el-header>
+      <div class="header-content">
+        <div class="logo">图书馆阅览室系统</div>
+        <div class="user-info">
+          <el-dropdown @command="handleCommand">
+            <span class="el-dropdown-link">
+              <el-avatar size="small" :src="userInfo.avatar ? userInfo.avatar : require('@/assets/default-avatar.png')"></el-avatar>
+              {{ userInfo.nickname || userInfo.username }}<i class="el-icon-arrow-down el-icon--right"></i>
+            </span>
+            <el-dropdown-menu slot="dropdown">
+              <el-dropdown-item command="person">
+                <i class="el-icon-user"></i>个人信息
+              </el-dropdown-item>
+              <el-dropdown-item command="password">修改密码</el-dropdown-item>
+              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </el-dropdown>
+        </div>
+      </div>
+    </el-header>
+
+    <el-container>
+      <el-aside width="200px">
+        <el-menu
+          :default-active="activeMenu"
+          class="el-menu-vertical"
+          @select="handleSelect">
+          <el-menu-item index="home">
+            <i class="el-icon-s-home"></i>
+            <span slot="title">首页</span>
+          </el-menu-item>
+          <el-menu-item index="seat-reservation">
+            <i class="el-icon-s-grid"></i>
+            <span slot="title">座位预约</span>
+          </el-menu-item>
+          <el-menu-item index="chat-rooms">
+            <i class="el-icon-chat-dot-round"></i>
+            <span slot="title">聊天室</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+
+      <el-main>
+        <!-- 使用路由视图 -->
+        <router-view v-if="!currentView || currentView === 'router'"></router-view>
+
+        <!-- 根据选中的菜单显示不同内容 -->
+        <component
+          :is="currentView"
+          v-else-if="currentView !== 'password' && currentView !== 'Person'"
+        ></component>
+
+        <change-password
+          v-else-if="currentView === 'password'"
+          role="user"
+          :userData=this.userInfo
+          @password-changed="handlePasswordChanged"
+        />
+
+        <person
+          v-else-if="currentView === 'Person'"
+          :userData=this.userInfo
+          @profile-updated="handleProfileUpdated"
+        />
+      </el-main>
+    </el-container>
+  </el-container>
+</template>
+
+<script>
+import ChangePassword from '@/components/ChangePassword.vue'
+import Home from '@/views/user/Home.vue'
+import Person from '@/views/user/Profile.vue'
+
+export default {
+  name: 'Layout',
+  components: {
+    ChangePassword,
+    Home,
+    Person
+  },
+  data() {
+    return {
+      userInfo: null,
+      activeMenu: 'home',
+      currentView: 'router'
+    }
+  },
+  created() {
+    // 获取用户信息
+    this.loadUserInfo();
+
+    // 根据当前路由设置激活的菜单
+    const path = this.$route.path;
+    if (path.includes('chat-room')) {
+      this.activeMenu = 'chat-rooms';
+    } else if (path.includes('chat-rooms')) {
+      this.activeMenu = 'chat-rooms';
+    } else if (path.includes('seat-reservation')) {
+      this.activeMenu = 'seat-reservation';
+    } else {
+      this.activeMenu = 'home';
+    }
+
+    // 监听全局用户信息更新事件
+    this.$bus.$on('user-updated', this.loadUserInfo);
+  },
+  methods: {
+    // 加载最新的用户信息
+    loadUserInfo() {
+      const userInfo = localStorage.getItem('user');
+      if (userInfo) {
+        this.userInfo = JSON.parse(userInfo);
+      }
+    },
+    handleSelect(key) {
+      this.activeMenu = key
+      // 设置为路由视图模式，确保router-view能够正确显示，加了这一行才能在进入profile的时候，能够顺利切换到座位预约和聊天室的界面
+      this.currentView = 'router'
+
+      // 根据菜单项进行路由跳转
+      switch(key) {
+        case 'home':
+          this.$router.push('/')
+          break
+        case 'seat-reservation':
+          this.$router.push('/seat-reservation')
+          break
+        case 'chat-rooms':
+          this.$router.push('/chat-rooms')
+          break
+        case 'notice':
+          this.$router.push('/notice')
+          break
+      }
+    },
+    handleCommand(command) {
+      switch(command) {
+        case 'person':
+          this.currentView = 'Person'
+          break
+        case 'password':
+          this.currentView = 'password'
+          break
+        case 'logout':
+          this.handleLogout()
+          break
+      }
+    },
+    handleLogout() {
+      this.$confirm('确认退出登录吗?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        localStorage.removeItem('user')
+        localStorage.removeItem('user-token')
+        this.$router.push('/login')
+        this.$message.success('已退出登录')
+      }).catch(() => {})
+    },
+    handlePasswordChanged() {
+      this.$message.success('密码修改成功')
+      this.$router.push('/') // 修改成功后返回首页
+      this.activeMenu = 'home'
+    },
+    handleProfileUpdated() {
+      // 更新本地存储的用户信息
+      const userInfo = localStorage.getItem('user')
+      if (userInfo) {
+        this.userInfo = JSON.parse(userInfo)
+      }
+      this.$message.success('个人信息更新成功')
+      this.$router.push('/')
+      this.activeMenu = 'home'
+    },
+  },
+  watch: {
+    // 监听路由变化，更新菜单激活状态
+    '$route'(to) {
+      if (to.path.includes('chat-room') || to.path.includes('chat-rooms')) {
+        this.activeMenu = 'chat-rooms';
+      } else if (to.path.includes('seat-reservation')) {
+        this.activeMenu = 'seat-reservation';
+      } else if (to.path === '/' || to.path === '') {
+        this.activeMenu = 'home';
+      }
+    }
+  },
+  beforeDestroy() {
+    // 清理事件监听
+    this.$bus.$off('user-updated', this.loadUserInfo);
+  }
+}
+</script>
+
+<style scoped>
+.el-container {
+  height: 100vh;
+}
+.el-header {
+  background-color: #409EFF;
+  color: white;
+  line-height: 60px;
+}
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+}
+.user-info {
+  color: white;
+}
+.el-dropdown-link {
+  color: white;
+  cursor: pointer;
+}
+.el-aside {
+  background-color: #545c64;
+}
+.el-menu {
+  border-right: none;
+}
+</style>

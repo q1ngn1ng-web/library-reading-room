@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.dao.ReservationDao">
+    <!-- Complex query to find reservations by search criteria -->
+    <select id="findBySearch" resultType="com.example.entity.Reservation" parameterType="com.example.entity.Params">
+        select r.*, u.username as userName from reservation r
+        left join user u on r.user_id = u.id
+        <where>
+            <if test="params != null and params.userId != null">
+                and r.user_id = #{params.userId}
+            </if>
+            <if test="params != null and params.status != null">
+                and r.status = #{params.status}
+            </if>
+            <if test="params != null and params.startDate != null">
+                and r.start_time >= #{params.startDate}
+            </if>
+            <if test="params != null and params.endDate != null">
+                and r.start_time &lt;= #{params.endDate}
+            </if>
+            <if test="params != null and params.floorNumber != null">
+                and r.floor_number = #{params.floorNumber}
+            </if>
+        </where>
+        order by r.start_time desc
+    </select>
+</mapper>

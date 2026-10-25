@@ -1,0 +1,28 @@
+# ===== 本地分析工作目录（不入库）=====
+.analysis/
+
+# ===== Java / Maven =====
+springboot/target/
+*.class
+*.iml
+.idea/
+
+# ===== Node / Vue =====
+node_modules/
+vue/dist/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== 运行时上传文件（保留目录占位）=====
+springboot/file/*
+!springboot/file/.gitkeep
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
