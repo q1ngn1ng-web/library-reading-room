@@ -27,19 +27,30 @@ public interface ReservationDao extends Mapper<Reservation> {
     @Select("select * from reservation where user_id = #{userId} and status = #{status} order by start_time desc")
     List<Reservation> findHistoryByUserIdAndStatus(@Param("userId") Integer userId, @Param("status") Integer status);
 
-    @Select("select * from reservation where status = 1 and timeout_at < #{now}")
+    // 以下自定义查询必须显式别名列名（项目未开启驼峰映射，select * 会导致实体字段为 null）
+
+    @Select("select id, user_id as userId, seat_id as seatId, start_time as startTime, " +
+            "end_time as endTime, timeout_at as timeoutAt, real_start_time as realStartTime, " +
+            "real_end_time as realEndTime, status " +
+            "from reservation where status = 1 and timeout_at < #{now}")
     List<Reservation> findTimeoutReservations(@Param("now") Date now);
 
     /**
      * 已签到但预约时段已结束的预约（用于定时自动结算：用户离线未退座的兜底）
      */
-    @Select("select * from reservation where status = 5 and end_time < #{now}")
+    @Select("select id, user_id as userId, seat_id as seatId, start_time as startTime, " +
+            "end_time as endTime, timeout_at as timeoutAt, real_start_time as realStartTime, " +
+            "real_end_time as realEndTime, status " +
+            "from reservation where status = 5 and end_time < #{now}")
     List<Reservation> findExpiredCheckedIn(@Param("now") Date now);
 
     /**
      * 某房间（楼层）的全部活跃预约（整层禁用时作废用）
      */
-    @Select("select r.* from reservation r join seat s on r.seat_id = s.id " +
+    @Select("select r.id, r.user_id as userId, r.seat_id as seatId, r.start_time as startTime, " +
+            "r.end_time as endTime, r.timeout_at as timeoutAt, r.real_start_time as realStartTime, " +
+            "r.real_end_time as realEndTime, r.status " +
+            "from reservation r join seat s on r.seat_id = s.id " +
             "where s.room_id = #{roomId} and r.status in (1, 5)")
     List<Reservation> findActiveByRoomId(@Param("roomId") Integer roomId);
 
