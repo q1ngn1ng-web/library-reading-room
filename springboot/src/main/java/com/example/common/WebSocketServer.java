@@ -342,6 +342,28 @@ public class WebSocketServer implements InitializingBean {
         }
     }
 
+    /**
+     * 向指定用户单播消息（遍历其所在的所有房间会话；不在线则忽略——尽力而为）
+     */
+    public static void sendToUser(Integer userId, String type, Dict payload) {
+        String json = JSONUtil.toJsonStr(payload.set("type", type));
+        for (Integer roomId : roomUsers.keySet()) {
+            Map<String, Object> users = roomUsers.get(roomId);
+            for (Map.Entry<String, Object> entry : users.entrySet()) {
+                if (String.valueOf(userId).equals(((Dict) entry.getValue()).getStr("userId"))) {
+                    Session s = roomSessions.get(roomId).get(entry.getKey());
+                    if (s != null && s.isOpen()) {
+                        try {
+                            s.getBasicRemote().sendText(json);
+                        } catch (IOException e) {
+                            log.error("向用户 {} 推送消息失败", userId, e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 静态方法，供其他类调用
     public static void sendRoomStatusUpdate(Integer roomId, Boolean status, String message) {
         Map<String, Session> roomSession = roomSessions.get(roomId);

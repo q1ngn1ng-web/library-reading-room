@@ -1,16 +1,15 @@
 package com.example.controller;
 
 import cn.hutool.core.util.ObjectUtil;
-import com.example.common.CaptureConfig;
 import com.example.common.JwtTokenUtils;
 import com.example.common.Result;
 import com.example.entity.User;
 import com.example.entity.Params;
 import com.example.service.UserService;
 import com.github.pagehelper.PageInfo;
-import com.wf.captcha.utils.CaptchaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -27,17 +26,27 @@ public class UserController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private StringRedisTemplate redisTemplate;
+
     @PostMapping("/login")
     public Result login(@RequestBody User user, @RequestParam String key, HttpServletRequest request) {
-        String value = CaptureConfig.CAPTURE_MAP.get(key);
         if (ObjectUtil.isEmpty(user.getVerCode())) {
             return Result.error("请输入验证码");
         }
-        if (!user.getVerCode().toLowerCase().equals(value)) {
-            // 清除session中的验证码
-            CaptchaUtil.clear(request);
-            return Result.error("验证码不正确");
+        // 验证码从 Redis 读取（5 分钟 TTL）
+        String value;
+        try {
+            value = redisTemplate.opsForValue().get("captcha:" + key);
+        } catch (Exception e) {
+            log.error("验证码服务(Redis)不可用", e);
+            return Result.error("验证码服务暂不可用，请稍后重试");
         }
+        if (value == null || !user.getVerCode().toLowerCase().equals(value)) {
+            return Result.error("验证码不正确或已过期");
+        }
+        // 一次性消费：校验通过立即删除，防止同一验证码重放
+        redisTemplate.delete("captcha:" + key);
         User loginUser = userService.login(user);
         return Result.success(loginUser);
     }

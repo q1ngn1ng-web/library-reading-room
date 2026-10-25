@@ -6,7 +6,8 @@ public enum ReservationStatus {
     TIMEOUT(3, "超时"),
     CANCELLED(4, "取消"),
     CHECKED_IN(5, "已签到"),
-    COMPLETED(6, "已完成");
+    COMPLETED(6, "已完成"),
+    ADMIN_RELEASED(7, "管理员作废");
 
     private final int code;
     private final String description;

@@ -74,10 +74,15 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         userDao.updateByPrimaryKeySelective(user);
+        // 写路径失效缓存
+        if (user.getId() != null) {
+            JwtTokenUtils.evictCache("user:" + user.getId());
+        }
     }
 
     public void delete(Integer id) {
         userDao.deleteByPrimaryKey(id);
+        JwtTokenUtils.evictCache("user:" + id);
     }
 
     public User login(User user) {
@@ -147,6 +152,7 @@ public class UserService {
 
         // 更新数据库中的密码
         userDao.updateByPrimaryKeySelective(user);
+        JwtTokenUtils.evictCache("user:" + id);
 
         return newPassword;
     }

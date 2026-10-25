@@ -2,6 +2,7 @@ package com.example.common;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -14,6 +15,7 @@ import com.example.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -22,6 +24,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * JWT 工具：统一使用服务端独立密钥签发与验签（密钥经环境变量 JWT_SECRET 注入），
@@ -35,6 +38,7 @@ public class JwtTokenUtils {
 
     private static UserService staticUserService;
     private static AdminService staticAdminService;
+    private static StringRedisTemplate staticRedis;
     private static String SECRET;
     private static int EXPIRE_HOURS;
 
@@ -43,6 +47,9 @@ public class JwtTokenUtils {
 
     @Resource
     private AdminService adminService;
+
+    @Resource
+    private StringRedisTemplate redisTemplate;
 
     @Value("${jwt.secret:}")
     private String secret;
@@ -60,6 +67,7 @@ public class JwtTokenUtils {
         EXPIRE_HOURS = expireHours;
         staticUserService = userService;
         staticAdminService = adminService;
+        staticRedis = redisTemplate;
     }
 
     /**
@@ -91,7 +99,8 @@ public class JwtTokenUtils {
     }
 
     /**
-     * 获取当前登录用户（userId/role 由 JwtInterceptor 验签后注入请求上下文）
+     * 获取当前登录用户（userId/role 由 JwtInterceptor 验签后注入请求上下文）。
+     * 用户信息走 Redis 缓存（TTL 30min，写路径主动失效），未命中回查数据库。
      */
     public static User getCurrentUser() {
         HttpServletRequest request = currentRequest();
@@ -100,7 +109,7 @@ public class JwtTokenUtils {
         }
         Integer userId = (Integer) request.getAttribute("userId");
         try {
-            return staticUserService.findById(userId);
+            return getCached("user:" + userId, User.class, () -> staticUserService.findById(userId));
         } catch (Exception e) {
             log.error("获取当前登录用户失败, userId={}", userId, e);
             return null;
@@ -114,10 +123,44 @@ public class JwtTokenUtils {
         }
         Integer userId = (Integer) request.getAttribute("userId");
         try {
-            return staticAdminService.findById(userId);
+            return getCached("admin:" + userId, Admin.class, () -> staticAdminService.findById(userId));
         } catch (Exception e) {
             log.error("获取当前登录管理员失败, adminId={}", userId, e);
             return null;
+        }
+    }
+
+    /**
+     * 通用读缓存：Redis 异常时降级直查数据库，不拖垮主流程
+     */
+    private static <T> T getCached(String key, Class<T> clazz, java.util.function.Supplier<T> dbLoader) {
+        try {
+            String cached = staticRedis.opsForValue().get(key);
+            if (cached != null) {
+                return JSONUtil.toBean(cached, clazz);
+            }
+        } catch (Exception e) {
+            log.warn("Redis 不可用，缓存降级直查DB: key={}", key, e);
+        }
+        T value = dbLoader.get();
+        if (value != null) {
+            try {
+                staticRedis.opsForValue().set(key, JSONUtil.toJsonStr(value), 30, TimeUnit.MINUTES);
+            } catch (Exception ignore) {
+                // 缓存写失败不影响主流程
+            }
+        }
+        return value;
+    }
+
+    /**
+     * 写路径失效缓存（更新资料/改密/删除/重置密码后调用）
+     */
+    public static void evictCache(String key) {
+        try {
+            staticRedis.delete(key);
+        } catch (Exception e) {
+            log.warn("缓存失效操作失败: key={}", key, e);
         }
     }
 

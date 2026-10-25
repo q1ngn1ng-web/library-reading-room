@@ -119,6 +119,10 @@ public class AdminService {
         }
         // 执行更新
         adminDao.updateByPrimaryKeySelective(admin);
+        // 写路径失效缓存
+        if (admin.getId() != null) {
+            JwtTokenUtils.evictCache("admin:" + admin.getId());
+        }
     }
 
     /**
@@ -132,6 +136,7 @@ public class AdminService {
         }
         // 执行删除
         adminDao.deleteByPrimaryKey(id);
+        JwtTokenUtils.evictCache("admin:" + id);
     }
 
     /**

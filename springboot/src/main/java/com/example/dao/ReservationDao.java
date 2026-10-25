@@ -30,6 +30,19 @@ public interface ReservationDao extends Mapper<Reservation> {
     @Select("select * from reservation where status = 1 and timeout_at < #{now}")
     List<Reservation> findTimeoutReservations(@Param("now") Date now);
 
+    /**
+     * 已签到但预约时段已结束的预约（用于定时自动结算：用户离线未退座的兜底）
+     */
+    @Select("select * from reservation where status = 5 and end_time < #{now}")
+    List<Reservation> findExpiredCheckedIn(@Param("now") Date now);
+
+    /**
+     * 某房间（楼层）的全部活跃预约（整层禁用时作废用）
+     */
+    @Select("select r.* from reservation r join seat s on r.seat_id = s.id " +
+            "where s.room_id = #{roomId} and r.status in (1, 5)")
+    List<Reservation> findActiveByRoomId(@Param("roomId") Integer roomId);
+
     @Update("update reservation set status = #{status} where id = #{id}")
     void updateStatus(@Param("id") Integer id, @Param("status") Integer status);
 

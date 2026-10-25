@@ -24,6 +24,13 @@ public interface SeatDao extends Mapper<Seat> {
     @Update("update seat set status = #{status} where id = #{id}")
     void updateSeatStatus(@Param("id") Integer id, @Param("status") Integer status);
 
+    /**
+     * 条件更新座位状态（乐观并发）：仅当前置状态匹配时才更新，返回影响行数。
+     * 抢座/释放必须使用本方法，防止并发超卖与误覆盖管理员禁用态。
+     */
+    @Update("update seat set status = #{to} where id = #{id} and status = #{from}")
+    int tryUpdateStatus(@Param("id") Integer id, @Param("from") Integer from, @Param("to") Integer to);
+
     @Update("update seat set status = #{status} where room_id = #{roomId}")
     void batchUpdateSeatStatus(@Param("roomId") Integer roomId, @Param("status") Integer status);
 }
