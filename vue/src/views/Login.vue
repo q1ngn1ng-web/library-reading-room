@@ -113,9 +113,8 @@ export default {
   // 定义一些页面上控件出发的事件调用的方法
   methods: {
     login() {
-      // console.log("当前baseURL", baseURL);
-      // console.log("当前this.baseURL", this.baseURL);
-    const url = `${this.baseURL}/${this.loginForm.userType}/login?key=${this.key}`;
+      // request 实例已带 baseURL（/api），这里只需相对路径，手动再拼会变成 /api/api/
+      const url = `/${this.loginForm.userType}/login?key=${this.key}`;
     request.post(url, this.loginForm).then((res) => {
       if (res.code === "0") {
         this.$message.success(this.loginForm.userType === "user" ? "用户登录成功" : "管理员登录成功");
